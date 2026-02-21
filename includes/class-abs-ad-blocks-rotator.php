@@ -310,11 +310,11 @@ class ABS_Ad_Blocks_Rotator
             <label><strong>Коды стран показа (ISO 3166-1 alpha-2)</strong></label><br />
             <div id="abs_country_input_wrap" class="abs-country-input-wrap">
                 <div id="abs_country_codes_list" class="abs-country-codes-list">
-                    <?php foreach ($country_codes as $code) : ?>
-                        <span class="abs-country-tag" data-code="<?php echo esc_attr($code); ?>">
-                            <span class="abs-country-tag-code"><?php echo esc_html($code); ?></span>
+                    <?php foreach ($country_codes as $country_code) : ?>
+                        <span class="abs-country-tag" data-code="<?php echo esc_attr($country_code); ?>">
+                            <span class="abs-country-tag-code"><?php echo esc_html($country_code); ?></span>
                             <button type="button" class="abs-country-remove" aria-label="Удалить код">&times;</button>
-                            <input type="hidden" name="abs_item_country_codes[]" value="<?php echo esc_attr($code); ?>" />
+                            <input type="hidden" name="abs_item_country_codes[]" value="<?php echo esc_attr($country_code); ?>" />
                         </span>
                     <?php endforeach; ?>
                     <input type="text" id="abs_item_country_code_input" class="abs-country-code-input" placeholder="Например: RU" />
