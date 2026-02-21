@@ -384,7 +384,7 @@ class ABS_Ad_Blocks_Rotator
                     placeholder='например: 0 / 8px / 12px' />
             </p>
             <p>
-                <label>Отступы (margin)</label><br />
+                <label>Отступы (внутренние, padding)</label><br />
                 <input type="text" name="abs_img_margin" value="<?php echo esc_attr($img_margin); ?>" style="width:260px;"
                     placeholder='например: 10px / 10px 0 / 10px 12px 8px 12px' />
             </p>
@@ -657,7 +657,6 @@ class ABS_Ad_Blocks_Rotator
             if ($max_h !== '') $style .= 'max-height:' . $max_h . ';';
             $style .= 'object-fit:' . $fit . ';';
             if ($rad !== '')   $style .= 'border-radius:' . $rad . ';';
-            if ($margin !== '') $style .= 'margin:' . $margin . ';';
 
             $img_html = wp_get_attachment_image($image_id, 'full', false, [
                 'alt'      => $alt ?: $post->post_title,
@@ -669,6 +668,7 @@ class ABS_Ad_Blocks_Rotator
             if (!$img_html) return '';
 
             $wrap_style = 'text-align:' . $align . ';';
+            if ($margin !== '') $wrap_style .= 'padding:' . $margin . ';';
             $inner = '<div class="abs-ad-img-wrap" style="' . esc_attr($wrap_style) . '">' . $img_html . '</div>';
 
             if (empty($link)) return $inner;
