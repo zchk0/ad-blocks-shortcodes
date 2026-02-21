@@ -17,6 +17,7 @@ class ABS_Ad_Blocks_Rotator
     // Item metas
     const MI_GROUP_ID = '_abs_group_id';
     const MI_ACTIVE   = '_abs_active';     // 1|0
+    const MI_RENDER_MOBILE = '_abs_render_mobile'; // 1|0
     const MI_TYPE     = '_abs_type';       // code|image
     const MI_CODE     = '_abs_code';
     const MI_IMAGE_ID = '_abs_image_id';
@@ -241,6 +242,8 @@ class ABS_Ad_Blocks_Rotator
 
         $active   = get_post_meta($post->ID, self::MI_ACTIVE, true);
         $active   = ($active === '' ? '1' : $active);
+        $render_mobile = get_post_meta($post->ID, self::MI_RENDER_MOBILE, true);
+        $render_mobile = ($render_mobile === '' ? '1' : $render_mobile);
 
         $type     = get_post_meta($post->ID, self::MI_TYPE, true);
         if (!$type) $type = 'code';
@@ -284,6 +287,13 @@ class ABS_Ad_Blocks_Rotator
             <label>
                 <input type="checkbox" name="abs_item_active" value="1" <?php checked($active, '1'); ?> />
                 Активен
+            </label>
+        </p>
+
+        <p>
+            <label>
+                <input type="checkbox" name="abs_item_render_mobile" value="1" <?php checked($render_mobile, '1'); ?> />
+                Рендерить блок на мобильных устройствах
             </label>
         </p>
 
@@ -509,6 +519,8 @@ class ABS_Ad_Blocks_Rotator
 
             $active = isset($_POST['abs_item_active']) ? '1' : '0';
             update_post_meta($post_id, self::MI_ACTIVE, $active);
+            $render_mobile = isset($_POST['abs_item_render_mobile']) ? '1' : '0';
+            update_post_meta($post_id, self::MI_RENDER_MOBILE, $render_mobile);
 
             $group_id = isset($_POST['abs_item_group_id']) ? (int)$_POST['abs_item_group_id'] : 0;
             update_post_meta($post_id, self::MI_GROUP_ID, (string)$group_id);
@@ -590,14 +602,24 @@ class ABS_Ad_Blocks_Rotator
             $rotation_type = 'time';
         }
 
+        $meta_query = [
+            ['key' => self::MI_GROUP_ID, 'value' => (string)$group_id, 'compare' => '='],
+            ['key' => self::MI_ACTIVE,   'value' => '1',              'compare' => '='],
+        ];
+
+        if (wp_is_mobile()) {
+            $meta_query[] = [
+                'relation' => 'OR',
+                ['key' => self::MI_RENDER_MOBILE, 'compare' => 'NOT EXISTS'],
+                ['key' => self::MI_RENDER_MOBILE, 'value' => '1', 'compare' => '='],
+            ];
+        }
+
         $items = get_posts([
             'post_type'   => self::CPT_ITEM,
             'post_status' => 'publish',
             'numberposts' => 200,
-            'meta_query'  => [
-                ['key' => self::MI_GROUP_ID, 'value' => (string)$group_id, 'compare' => '='],
-                ['key' => self::MI_ACTIVE,   'value' => '1',              'compare' => '='],
-            ],
+            'meta_query'  => $meta_query,
             'orderby' => 'ID',
             'order'   => 'ASC',
         ]);
@@ -631,14 +653,24 @@ class ABS_Ad_Blocks_Rotator
             $rotation_type = 'time';
         }
 
+        $meta_query = [
+            ['key' => self::MI_GROUP_ID, 'value' => (string)$group_id, 'compare' => '='],
+            ['key' => self::MI_ACTIVE,   'value' => '1',              'compare' => '='],
+        ];
+
+        if (wp_is_mobile()) {
+            $meta_query[] = [
+                'relation' => 'OR',
+                ['key' => self::MI_RENDER_MOBILE, 'compare' => 'NOT EXISTS'],
+                ['key' => self::MI_RENDER_MOBILE, 'value' => '1', 'compare' => '='],
+            ];
+        }
+
         $items = get_posts([
             'post_type'   => self::CPT_ITEM,
             'post_status' => 'publish',
             'numberposts' => 200,
-            'meta_query'  => [
-                ['key' => self::MI_GROUP_ID, 'value' => (string)$group_id, 'compare' => '='],
-                ['key' => self::MI_ACTIVE,   'value' => '1',              'compare' => '='],
-            ],
+            'meta_query'  => $meta_query,
             'orderby' => 'ID',
             'order'   => 'ASC',
         ]);
