@@ -101,11 +101,11 @@ class ABS_Ad_Blocks_Rotator
             return;
         }
 
-        if (in_array($screen->post_type, [self::CPT_ITEM, self::CPT_GROUP], true)) {
+        if ($screen->post_type === self::CPT_ITEM) {
             wp_enqueue_media();
         }
 
-        if ($screen->post_type === self::CPT_ITEM) {
+        if (in_array($screen->post_type, [self::CPT_ITEM, self::CPT_GROUP], true)) {
             wp_enqueue_script(
                 'abs-ad-rotator-admin',
                 plugin_dir_url(ABS_AD_BLOCKS_SHORTCODES_FILE) . 'assets/js/abs-admin.js',
@@ -189,19 +189,19 @@ class ABS_Ad_Blocks_Rotator
 ?>
         <p>
             <label><strong>Тип ротации</strong></label><br />
-            <select name="abs_rotation_type">
+            <select name="abs_rotation_type" id="abs_rotation_type">
                 <option value="time" <?php selected($rotation_type, 'time'); ?>>По времени (автообновление)</option>
                 <option value="page_random" <?php selected($rotation_type, 'page_random'); ?>>Случайно при загрузке страницы</option>
             </select>
         </p>
 
-        <p>
+        <p class="abs-rotation-time" style="<?php echo $rotation_type === 'time' ? '' : 'display:none;'; ?>">
             <label><strong>Интервал смены (сек., только для режима "По времени")</strong></label><br />
             <input type="number" name="abs_interval" min="1" value="<?php echo esc_attr($interval); ?>" style="width:180px;" />
             <span style="opacity:.75;">например: 30, 60, 300, 3600</span>
         </p>
 
-        <p>
+        <p class="abs-rotation-time" style="<?php echo $rotation_type === 'time' ? '' : 'display:none;'; ?>">
             <label><strong>Режим ротации (только для режима "По времени")</strong></label><br />
             <select name="abs_mode">
                 <option value="random" <?php selected($mode, 'random'); ?>>Случайно</option>
@@ -209,11 +209,15 @@ class ABS_Ad_Blocks_Rotator
             </select>
         </p>
 
-        <p>
+        <p class="abs-rotation-time" style="<?php echo $rotation_type === 'time' ? '' : 'display:none;'; ?>">
             <label>
                 <input type="checkbox" name="abs_sticky" value="1" <?php checked($sticky, '1'); ?> />
                 Липкость (только для режима "По времени"): одному посетителю показывать один и тот же элемент в пределах интервала
             </label>
+        </p>
+
+        <p class="abs-rotation-page-random" style="<?php echo $rotation_type === 'page_random' ? '' : 'display:none;'; ?>">
+            В этом режиме случайный элемент выбирается один раз при загрузке страницы без автопереключения по таймеру.
         </p>
 
         <hr />

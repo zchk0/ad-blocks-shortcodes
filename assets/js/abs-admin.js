@@ -62,5 +62,16 @@
             $('.abs-type-code').toggle(isCode);
             $('.abs-type-image').toggle(!isCode);
         });
+
+        function toggleRotationType() {
+            const isTime = $('#abs_rotation_type').val() === 'time';
+            $('.abs-rotation-time').toggle(isTime);
+            $('.abs-rotation-page-random').toggle(!isTime);
+        }
+
+        if ($('#abs_rotation_type').length) {
+            $('#abs_rotation_type').on('change', toggleRotationType);
+            toggleRotationType();
+        }
     });
 })(jQuery);
