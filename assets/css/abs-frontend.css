@@ -1,0 +1,24 @@
+.abs-ad-block,
+.abs-ad-block * {
+    box-sizing: border-box;
+}
+
+.abs-ad-inner {
+    width: 100%;
+    overflow: hidden;
+}
+
+.abs-ad-img-wrap {
+    width: 100%;
+    overflow: hidden;
+}
+
+.abs-ad-img-wrap img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+}
+
+.abs-ad-block a {
+    display: block;
+}
