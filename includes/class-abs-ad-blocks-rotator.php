@@ -3,7 +3,8 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-class ABS_Ad_Blocks_Rotator {
+class ABS_Ad_Blocks_Rotator
+{
     const CPT_GROUP = 'abs_ad_group';
     const CPT_ITEM  = 'abs_ad_item';
 
@@ -29,8 +30,10 @@ class ABS_Ad_Blocks_Rotator {
     const MI_IMG_FIT      = '_abs_img_fit';     // contain|cover|fill|none|scale-down
     const MI_IMG_ALIGN    = '_abs_img_align';   // left|center|right
     const MI_IMG_RADIUS   = '_abs_img_radius';  // e.g. "0" or "8px" or "12px"
+    const MI_IMG_MARGIN   = '_abs_img_margin';  // e.g. "10px" or "10px 0 20px"
 
-    public function __construct() {
+    public function __construct()
+    {
         add_action('init', [$this, 'register_cpts']);
         add_action('add_meta_boxes', [$this, 'add_metaboxes']);
         add_action('save_post', [$this, 'save_metaboxes']);
@@ -40,6 +43,8 @@ class ABS_Ad_Blocks_Rotator {
         add_action('wp_enqueue_scripts', [$this, 'frontend_assets']);
 
         add_shortcode('ad_block', [$this, 'shortcode_ad_block']);
+        add_action('wp_ajax_abs_ad_block_rotate', [$this, 'ajax_rotate_ad_block']);
+        add_action('wp_ajax_nopriv_abs_ad_block_rotate', [$this, 'ajax_rotate_ad_block']);
 
         // Чтобы шорткоды работали в виджетах/тексте (по желанию)
         add_filter('widget_text', 'do_shortcode');
@@ -49,7 +54,8 @@ class ABS_Ad_Blocks_Rotator {
     /* ---------------------------
      * CPTs
      * --------------------------- */
-    public function register_cpts() {
+    public function register_cpts()
+    {
         register_post_type(self::CPT_GROUP, [
             'labels' => [
                 'name'          => 'Список рекламных шорткодов',
@@ -69,7 +75,7 @@ class ABS_Ad_Blocks_Rotator {
 
         register_post_type(self::CPT_ITEM, [
             'labels' => [
-                'name'          => 'Реклама: элементы',
+                'name'          => 'Рекламные материалы',
                 'singular_name' => 'Элемент рекламы',
                 'add_new_item'  => 'Добавить элемент',
                 'edit_item'     => 'Редактировать элемент',
@@ -87,7 +93,8 @@ class ABS_Ad_Blocks_Rotator {
     /* ---------------------------
      * Assets
      * --------------------------- */
-    public function admin_assets() {
+    public function admin_assets()
+    {
         $screen = function_exists('get_current_screen') ? get_current_screen() : null;
         if (!$screen) {
             return;
@@ -113,19 +120,33 @@ class ABS_Ad_Blocks_Rotator {
         }
     }
 
-    public function frontend_assets() {
+    public function frontend_assets()
+    {
         wp_enqueue_style(
             'abs-ad-rotator-frontend',
             plugin_dir_url(ABS_AD_BLOCKS_SHORTCODES_FILE) . 'assets/css/abs-frontend.css',
             [],
             ABS_AD_BLOCKS_SHORTCODES_VERSION
         );
+
+        wp_enqueue_script(
+            'abs-ad-rotator-frontend',
+            plugin_dir_url(ABS_AD_BLOCKS_SHORTCODES_FILE) . 'assets/js/abs-frontend.js',
+            ['jquery'],
+            ABS_AD_BLOCKS_SHORTCODES_VERSION,
+            true
+        );
+
+        wp_localize_script('abs-ad-rotator-frontend', 'absAdRotatorFrontend', [
+            'ajaxUrl' => admin_url('admin-ajax.php'),
+        ]);
     }
 
     /* ---------------------------
      * Admin UI (Metaboxes)
      * --------------------------- */
-    public function add_metaboxes() {
+    public function add_metaboxes()
+    {
         add_meta_box(
             'abs_group_settings',
             'Настройки ротации',
@@ -145,7 +166,8 @@ class ABS_Ad_Blocks_Rotator {
         );
     }
 
-    public function render_group_metabox($post) {
+    public function render_group_metabox($post)
+    {
         wp_nonce_field('abs_save_group', 'abs_group_nonce');
 
         $interval = (int) get_post_meta($post->ID, self::MG_INTERVAL, true);
@@ -158,18 +180,18 @@ class ABS_Ad_Blocks_Rotator {
         $sticky = ($sticky === '' ? '1' : $sticky);
 
         $slug = $post->post_name;
-        ?>
+?>
         <p>
-            <label><strong>Интервал смены (сек.)</strong></label><br/>
+            <label><strong>Интервал смены (сек.)</strong></label><br />
             <input type="number" name="abs_interval" min="1" value="<?php echo esc_attr($interval); ?>" style="width:180px;" />
             <span style="opacity:.75;">например: 30, 60, 300, 3600</span>
         </p>
 
         <p>
-            <label><strong>Режим ротации</strong></label><br/>
+            <label><strong>Режим ротации</strong></label><br />
             <select name="abs_mode">
                 <option value="random" <?php selected($mode, 'random'); ?>>Случайно</option>
-                <option value="round"  <?php selected($mode, 'round');  ?>>По очереди</option>
+                <option value="round" <?php selected($mode, 'round');  ?>>По очереди</option>
             </select>
         </p>
 
@@ -180,7 +202,7 @@ class ABS_Ad_Blocks_Rotator {
             </label>
         </p>
 
-        <hr/>
+        <hr />
         <p>
             <strong>Шорткод:</strong>
             <code>[ad_block id="<?php echo (int)$post->ID; ?>"]</code>
@@ -189,12 +211,13 @@ class ABS_Ad_Blocks_Rotator {
             <?php endif; ?>
         </p>
         <p style="opacity:.8;">
-            Элементы добавляются в разделе <strong>Реклама: элементы</strong> и привязываются к этой группе.
+            Элементы добавляются в разделе <strong>Рекламные материалы</strong> и привязываются к этой группе.
         </p>
-        <?php
+    <?php
     }
 
-    public function render_item_metabox($post) {
+    public function render_item_metabox($post)
+    {
         wp_nonce_field('abs_save_item', 'abs_item_nonce');
 
         $active   = get_post_meta($post->ID, self::MI_ACTIVE, true);
@@ -218,6 +241,7 @@ class ABS_Ad_Blocks_Rotator {
         $img_fit   = get_post_meta($post->ID, self::MI_IMG_FIT, true);
         $img_align = get_post_meta($post->ID, self::MI_IMG_ALIGN, true);
         $img_rad   = get_post_meta($post->ID, self::MI_IMG_RADIUS, true);
+        $img_margin = get_post_meta($post->ID, self::MI_IMG_MARGIN, true);
 
         if ($img_w === '')     $img_w = '100%';
         if ($img_h === '')     $img_h = 'auto';
@@ -235,7 +259,7 @@ class ABS_Ad_Blocks_Rotator {
         ]);
 
         $img_url = $image_id ? wp_get_attachment_image_url($image_id, 'medium') : '';
-        ?>
+    ?>
         <p>
             <label>
                 <input type="checkbox" name="abs_item_active" value="1" <?php checked($active, '1'); ?> />
@@ -244,7 +268,7 @@ class ABS_Ad_Blocks_Rotator {
         </p>
 
         <p>
-            <label><strong>Группа</strong></label><br/>
+            <label><strong>Группа</strong></label><br />
             <select name="abs_item_group_id" required>
                 <option value="">— выбери группу —</option>
                 <?php foreach ($groups as $g) : ?>
@@ -255,12 +279,12 @@ class ABS_Ad_Blocks_Rotator {
             </select>
         </p>
 
-        <hr/>
+        <hr />
 
         <p>
-            <label><strong>Тип элемента</strong></label><br/>
+            <label><strong>Тип элемента</strong></label><br />
             <select name="abs_item_type" id="abs_item_type">
-                <option value="code"  <?php selected($type, 'code');  ?>>Код (HTML/JS)</option>
+                <option value="code" <?php selected($type, 'code');  ?>>Код (HTML/JS)</option>
                 <option value="image" <?php selected($type, 'image'); ?>>Картинка + ссылка</option>
             </select>
         </p>
@@ -274,7 +298,7 @@ class ABS_Ad_Blocks_Rotator {
         </div>
 
         <div class="abs-type abs-type-image" style="<?php echo $type === 'image' ? '' : 'display:none;'; ?>">
-            <input type="hidden" name="abs_item_image_id" id="abs_item_image_id" value="<?php echo esc_attr($image_id); ?>"/>
+            <input type="hidden" name="abs_item_image_id" id="abs_item_image_id" value="<?php echo esc_attr($image_id); ?>" />
 
             <p>
                 <button type="button" class="button" id="abs_pick_image">Выбрать/загрузить картинку</button>
@@ -288,79 +312,76 @@ class ABS_Ad_Blocks_Rotator {
             </div>
 
             <p>
-                <label><strong>Ссылка при клике</strong></label><br/>
-                <input type="url" name="abs_item_link_url" value="<?php echo esc_attr($link); ?>" style="width:100%;" placeholder="https://example.com"/>
+                <label><strong>Ссылка при клике</strong></label><br />
+                <input type="url" name="abs_item_link_url" value="<?php echo esc_attr($link); ?>" style="width:100%;" placeholder="https://example.com" />
             </p>
-
             <p>
-                <label><strong>ALT (для картинки)</strong></label><br/>
-                <input type="text" name="abs_item_alt" value="<?php echo esc_attr($alt); ?>" style="width:100%;" placeholder="Описание картинки"/>
+                <label><strong>ALT (для картинки)</strong></label><br />
+                <input type="text" name="abs_item_alt" value="<?php echo esc_attr($alt); ?>" style="width:100%;" placeholder="Описание картинки" />
             </p>
 
-            <hr/>
+            <hr />
             <p><strong>Условия размеров (CSS)</strong></p>
-
             <p>
-              <label>Ширина (width)</label><br/>
-              <input type="text" name="abs_img_w" value="<?php echo esc_attr($img_w); ?>" style="width:220px;"
-                     placeholder='например: 100% / 300px / auto' />
+                <label>Ширина (width)</label><br />
+                <input type="text" name="abs_img_w" value="<?php echo esc_attr($img_w); ?>" style="width:220px;"
+                    placeholder='например: 100% / 300px / auto' />
             </p>
-
             <p>
-              <label>Высота (height)</label><br/>
-              <input type="text" name="abs_img_h" value="<?php echo esc_attr($img_h); ?>" style="width:220px;"
-                     placeholder='например: auto / 250px' />
+                <label>Высота (height)</label><br />
+                <input type="text" name="abs_img_h" value="<?php echo esc_attr($img_h); ?>" style="width:220px;"
+                    placeholder='например: auto / 250px' />
             </p>
-
             <p>
-              <label>Макс. ширина (max-width)</label><br/>
-              <input type="text" name="abs_img_max_w" value="<?php echo esc_attr($img_max_w); ?>" style="width:220px;"
-                     placeholder='например: 100% / 728px' />
+                <label>Макс. ширина (max-width)</label><br />
+                <input type="text" name="abs_img_max_w" value="<?php echo esc_attr($img_max_w); ?>" style="width:220px;"
+                    placeholder='например: 100% / 728px' />
             </p>
-
             <p>
-              <label>Макс. высота (max-height)</label><br/>
-              <input type="text" name="abs_img_max_h" value="<?php echo esc_attr($img_max_h); ?>" style="width:220px;"
-                     placeholder='например: 250px (можно пусто)' />
+                <label>Макс. высота (max-height)</label><br />
+                <input type="text" name="abs_img_max_h" value="<?php echo esc_attr($img_max_h); ?>" style="width:220px;"
+                    placeholder='например: 250px (можно пусто)' />
             </p>
-
             <p>
-              <label>Вписывание (object-fit)</label><br/>
-              <select name="abs_img_fit">
-                <option value="contain" <?php selected($img_fit,'contain'); ?>>contain (вписать целиком)</option>
-                <option value="cover" <?php selected($img_fit,'cover'); ?>>cover (заполнить, может обрезать)</option>
-                <option value="fill" <?php selected($img_fit,'fill'); ?>>fill</option>
-                <option value="none" <?php selected($img_fit,'none'); ?>>none</option>
-                <option value="scale-down" <?php selected($img_fit,'scale-down'); ?>>scale-down</option>
-              </select>
+                <label>Вписывание (object-fit)</label><br />
+                <select name="abs_img_fit">
+                    <option value="contain" <?php selected($img_fit, 'contain'); ?>>contain (вписать целиком)</option>
+                    <option value="cover" <?php selected($img_fit, 'cover'); ?>>cover (заполнить, может обрезать)</option>
+                    <option value="fill" <?php selected($img_fit, 'fill'); ?>>fill</option>
+                    <option value="none" <?php selected($img_fit, 'none'); ?>>none</option>
+                    <option value="scale-down" <?php selected($img_fit, 'scale-down'); ?>>scale-down</option>
+                </select>
             </p>
-
             <p>
-              <label>Выравнивание</label><br/>
-              <select name="abs_img_align">
-                <option value="left"   <?php selected($img_align,'left'); ?>>Слева</option>
-                <option value="center" <?php selected($img_align,'center'); ?>>По центру</option>
-                <option value="right"  <?php selected($img_align,'right'); ?>>Справа</option>
-              </select>
+                <label>Выравнивание</label><br />
+                <select name="abs_img_align">
+                    <option value="left" <?php selected($img_align, 'left'); ?>>Слева</option>
+                    <option value="center" <?php selected($img_align, 'center'); ?>>По центру</option>
+                    <option value="right" <?php selected($img_align, 'right'); ?>>Справа</option>
+                </select>
             </p>
-
             <p>
-              <label>Скругление (border-radius)</label><br/>
-              <input type="text" name="abs_img_radius" value="<?php echo esc_attr($img_rad); ?>" style="width:220px;"
-                     placeholder='например: 0 / 8px / 12px' />
+                <label>Скругление (border-radius)</label><br />
+                <input type="text" name="abs_img_radius" value="<?php echo esc_attr($img_rad); ?>" style="width:220px;"
+                    placeholder='например: 0 / 8px / 12px' />
             </p>
-
+            <p>
+                <label>Отступы (margin)</label><br />
+                <input type="text" name="abs_img_margin" value="<?php echo esc_attr($img_margin); ?>" style="width:260px;"
+                    placeholder='например: 10px / 10px 0 / 10px 12px 8px 12px' />
+            </p>
             <p style="opacity:.75;">
-              Значения — как в CSS: <code>100%</code>, <code>300px</code>, <code>auto</code>.
+                Значения — как в CSS: <code>100%</code>, <code>300px</code>, <code>auto</code>.
             </p>
         </div>
-        <?php
+<?php
     }
 
     /* ---------------------------
      * Save handlers
      * --------------------------- */
-    public function save_metaboxes($post_id) {
+    public function save_metaboxes($post_id)
+    {
         // Group save
         if (isset($_POST['abs_group_nonce']) && wp_verify_nonce($_POST['abs_group_nonce'], 'abs_save_group')) {
             if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
@@ -368,7 +389,7 @@ class ABS_Ad_Blocks_Rotator {
             if (get_post_type($post_id) !== self::CPT_GROUP) return;
 
             $interval = isset($_POST['abs_interval']) ? max(1, (int)$_POST['abs_interval']) : 60;
-            $mode = (isset($_POST['abs_mode']) && in_array($_POST['abs_mode'], ['random','round'], true)) ? $_POST['abs_mode'] : 'random';
+            $mode = (isset($_POST['abs_mode']) && in_array($_POST['abs_mode'], ['random', 'round'], true)) ? $_POST['abs_mode'] : 'random';
             $sticky = isset($_POST['abs_sticky']) ? '1' : '0';
 
             update_post_meta($post_id, self::MG_INTERVAL, (string)$interval);
@@ -388,7 +409,7 @@ class ABS_Ad_Blocks_Rotator {
             $group_id = isset($_POST['abs_item_group_id']) ? (int)$_POST['abs_item_group_id'] : 0;
             update_post_meta($post_id, self::MI_GROUP_ID, (string)$group_id);
 
-            $type = (isset($_POST['abs_item_type']) && in_array($_POST['abs_item_type'], ['code','image'], true)) ? $_POST['abs_item_type'] : 'code';
+            $type = (isset($_POST['abs_item_type']) && in_array($_POST['abs_item_type'], ['code', 'image'], true)) ? $_POST['abs_item_type'] : 'code';
             update_post_meta($post_id, self::MI_TYPE, $type);
 
             // code
@@ -411,13 +432,14 @@ class ABS_Ad_Blocks_Rotator {
             $img_max_w = isset($_POST['abs_img_max_w']) ? $this->sanitize_css_size($_POST['abs_img_max_w'], '100%') : '100%';
             $img_max_h = isset($_POST['abs_img_max_h']) ? $this->sanitize_css_size($_POST['abs_img_max_h'], '') : '';
 
-            $fit_allowed = ['contain','cover','fill','none','scale-down'];
+            $fit_allowed = ['contain', 'cover', 'fill', 'none', 'scale-down'];
             $img_fit = (isset($_POST['abs_img_fit']) && in_array($_POST['abs_img_fit'], $fit_allowed, true)) ? $_POST['abs_img_fit'] : 'contain';
 
-            $align_allowed = ['left','center','right'];
+            $align_allowed = ['left', 'center', 'right'];
             $img_align = (isset($_POST['abs_img_align']) && in_array($_POST['abs_img_align'], $align_allowed, true)) ? $_POST['abs_img_align'] : 'center';
 
             $img_radius = isset($_POST['abs_img_radius']) ? $this->sanitize_css_size($_POST['abs_img_radius'], '0') : '0';
+            $img_margin = isset($_POST['abs_img_margin']) ? $this->sanitize_css_box_size($_POST['abs_img_margin'], '') : '';
 
             update_post_meta($post_id, self::MI_IMG_W, $img_w);
             update_post_meta($post_id, self::MI_IMG_H, $img_h);
@@ -426,13 +448,15 @@ class ABS_Ad_Blocks_Rotator {
             update_post_meta($post_id, self::MI_IMG_FIT, $img_fit);
             update_post_meta($post_id, self::MI_IMG_ALIGN, $img_align);
             update_post_meta($post_id, self::MI_IMG_RADIUS, $img_radius);
+            update_post_meta($post_id, self::MI_IMG_MARGIN, $img_margin);
         }
     }
 
     /* ---------------------------
      * Shortcode output
      * --------------------------- */
-    public function shortcode_ad_block($atts) {
+    public function shortcode_ad_block($atts)
+    {
         $atts = shortcode_atts([
             'id'    => '',
             'slug'  => '',
@@ -475,10 +499,51 @@ class ABS_Ad_Blocks_Rotator {
         $class = $this->sanitize_classes($atts['class']);
         $wrapper_class = 'abs-ad-block' . ($class ? ' ' . $class : '');
 
-        return '<div class="' . esc_attr($wrapper_class) . '"><div class="abs-ad-inner">' . $this->render_item($chosen) . '</div></div>';
+        return '<div class="' . esc_attr($wrapper_class) . '" data-abs-group-id="' . (int)$group_id . '" data-abs-interval="' . (int)$interval . '"><div class="abs-ad-inner">' . $this->render_item($chosen) . '</div></div>';
     }
 
-    private function pick_item($group_id, $items, $interval, $mode, $sticky) {
+    public function ajax_rotate_ad_block()
+    {
+        $group_id = isset($_POST['group_id']) ? absint(wp_unslash($_POST['group_id'])) : 0;
+        if ($group_id <= 0) {
+            wp_send_json_error(['message' => 'Invalid group id'], 400);
+        }
+
+        $interval = (int) get_post_meta($group_id, self::MG_INTERVAL, true);
+        if ($interval <= 0) $interval = 60;
+
+        $mode = get_post_meta($group_id, self::MG_MODE, true) ?: 'random';
+        $sticky = get_post_meta($group_id, self::MG_STICKY, true);
+        $sticky = ($sticky === '' ? '1' : $sticky);
+
+        $items = get_posts([
+            'post_type'   => self::CPT_ITEM,
+            'post_status' => 'publish',
+            'numberposts' => 200,
+            'meta_query'  => [
+                ['key' => self::MI_GROUP_ID, 'value' => (string)$group_id, 'compare' => '='],
+                ['key' => self::MI_ACTIVE,   'value' => '1',              'compare' => '='],
+            ],
+            'orderby' => 'ID',
+            'order'   => 'ASC',
+        ]);
+
+        if (!$items) {
+            wp_send_json_error(['message' => 'No items'], 404);
+        }
+
+        $chosen = $this->pick_item($group_id, $items, $interval, $mode, $sticky);
+        if (!$chosen) {
+            wp_send_json_error(['message' => 'No item selected'], 404);
+        }
+
+        wp_send_json_success([
+            'html' => $this->render_item($chosen),
+        ]);
+    }
+
+    private function pick_item($group_id, $items, $interval, $mode, $sticky)
+    {
         $count = count($items);
         if ($count === 1) return $items[0];
 
@@ -493,7 +558,7 @@ class ABS_Ad_Blocks_Rotator {
                 $visitor_id = wp_generate_password(18, false, false);
 
                 // setcookie: не всегда сработает после вывода, но чаще ок (шорткод обычно в контенте до отправки заголовков)
-                @setcookie($cookie_vid, $visitor_id, time() + 3600*24*365, COOKIEPATH ?: '/', COOKIE_DOMAIN);
+                @setcookie($cookie_vid, $visitor_id, time() + 3600 * 24 * 365, COOKIEPATH ?: '/', COOKIE_DOMAIN);
                 $_COOKIE[$cookie_vid] = $visitor_id;
             } else {
                 $visitor_id = sanitize_text_field($_COOKIE[$cookie_vid]);
@@ -517,7 +582,8 @@ class ABS_Ad_Blocks_Rotator {
         return $items[$idx];
     }
 
-    private function render_item($post) {
+    private function render_item($post)
+    {
         $type = get_post_meta($post->ID, self::MI_TYPE, true) ?: 'code';
 
         if ($type === 'image') {
@@ -535,6 +601,7 @@ class ABS_Ad_Blocks_Rotator {
             $fit   = get_post_meta($post->ID, self::MI_IMG_FIT, true) ?: 'contain';
             $align = get_post_meta($post->ID, self::MI_IMG_ALIGN, true) ?: 'center';
             $rad   = get_post_meta($post->ID, self::MI_IMG_RADIUS, true) ?: '0';
+            $margin = get_post_meta($post->ID, self::MI_IMG_MARGIN, true);
 
             // sanitize again on output (на случай кривых данных в базе)
             $w     = $this->sanitize_css_size($w, '100%');
@@ -542,11 +609,12 @@ class ABS_Ad_Blocks_Rotator {
             $max_w = $this->sanitize_css_size($max_w, '100%');
             $max_h = $this->sanitize_css_size($max_h, '');
             $rad   = $this->sanitize_css_size($rad, '0');
+            $margin = $this->sanitize_css_box_size($margin, '');
 
-            $fit_allowed = ['contain','cover','fill','none','scale-down'];
+            $fit_allowed = ['contain', 'cover', 'fill', 'none', 'scale-down'];
             if (!in_array($fit, $fit_allowed, true)) $fit = 'contain';
 
-            $align_allowed = ['left','center','right'];
+            $align_allowed = ['left', 'center', 'right'];
             if (!in_array($align, $align_allowed, true)) $align = 'center';
 
             // inline style
@@ -557,6 +625,7 @@ class ABS_Ad_Blocks_Rotator {
             if ($max_h !== '') $style .= 'max-height:' . $max_h . ';';
             $style .= 'object-fit:' . $fit . ';';
             if ($rad !== '')   $style .= 'border-radius:' . $rad . ';';
+            if ($margin !== '') $style .= 'margin:' . $margin . ';';
 
             $img_html = wp_get_attachment_image($image_id, 'full', false, [
                 'alt'      => $alt ?: $post->post_title,
@@ -587,7 +656,8 @@ class ABS_Ad_Blocks_Rotator {
 
     // Очень консервативная чистка CSS-значений размеров:
     // допускаем: auto | 0 | число + (px|%|em|rem|vh|vw) | calc(...)
-    private function sanitize_css_size($value, $default) {
+    private function sanitize_css_size($value, $default)
+    {
         $value = is_string($value) ? trim($value) : '';
         if ($value === '') return $default;
 
@@ -609,7 +679,31 @@ class ABS_Ad_Blocks_Rotator {
         return $default;
     }
 
-    private function sanitize_classes($classes) {
+    // For margin/padding-like values: 1..4 css size tokens (e.g. "10px 0 12px 0").
+    private function sanitize_css_box_size($value, $default)
+    {
+        $value = is_string($value) ? trim($value) : '';
+        if ($value === '') return $default;
+
+        $parts = preg_split('/\s+/', $value);
+        if (!is_array($parts) || count($parts) < 1 || count($parts) > 4) {
+            return $default;
+        }
+
+        $clean = [];
+        foreach ($parts as $part) {
+            $safe_part = $this->sanitize_css_size($part, '');
+            if ($safe_part === '') {
+                return $default;
+            }
+            $clean[] = $safe_part;
+        }
+
+        return implode(' ', $clean);
+    }
+
+    private function sanitize_classes($classes)
+    {
         $classes = is_string($classes) ? trim($classes) : '';
         if ($classes === '') return '';
         $parts = preg_split('/\s+/', $classes);
