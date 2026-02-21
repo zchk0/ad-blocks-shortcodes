@@ -7,12 +7,13 @@
             return;
         }
 
-        $('.abs-ad-block[data-abs-group-id][data-abs-interval]').each(function () {
+        $('.abs-ad-block[data-abs-group-id][data-abs-interval][data-abs-rotation-type]').each(function () {
             const $block = $(this);
             const groupId = parseInt($block.attr('data-abs-group-id'), 10) || 0;
             const intervalSec = parseInt($block.attr('data-abs-interval'), 10) || 0;
+            const rotationType = String($block.attr('data-abs-rotation-type') || '');
 
-            if (!groupId || intervalSec < 1) {
+            if (!groupId || rotationType !== 'time' || intervalSec < 1) {
                 return;
             }
 

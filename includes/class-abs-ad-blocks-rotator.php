@@ -12,6 +12,7 @@ class ABS_Ad_Blocks_Rotator
     const MG_INTERVAL = '_abs_interval';   // seconds
     const MG_MODE     = '_abs_mode';       // random|round
     const MG_STICKY   = '_abs_sticky';     // 1|0
+    const MG_ROTATION_TYPE = '_abs_rotation_type'; // time|page_random
 
     // Item metas
     const MI_GROUP_ID = '_abs_group_id';
@@ -179,16 +180,29 @@ class ABS_Ad_Blocks_Rotator
         $sticky = get_post_meta($post->ID, self::MG_STICKY, true);
         $sticky = ($sticky === '' ? '1' : $sticky);
 
+        $rotation_type = get_post_meta($post->ID, self::MG_ROTATION_TYPE, true);
+        if (!in_array($rotation_type, ['time', 'page_random'], true)) {
+            $rotation_type = 'time';
+        }
+
         $slug = $post->post_name;
 ?>
         <p>
-            <label><strong>Интервал смены (сек.)</strong></label><br />
+            <label><strong>Тип ротации</strong></label><br />
+            <select name="abs_rotation_type">
+                <option value="time" <?php selected($rotation_type, 'time'); ?>>По времени (автообновление)</option>
+                <option value="page_random" <?php selected($rotation_type, 'page_random'); ?>>Случайно при загрузке страницы</option>
+            </select>
+        </p>
+
+        <p>
+            <label><strong>Интервал смены (сек., только для режима "По времени")</strong></label><br />
             <input type="number" name="abs_interval" min="1" value="<?php echo esc_attr($interval); ?>" style="width:180px;" />
             <span style="opacity:.75;">например: 30, 60, 300, 3600</span>
         </p>
 
         <p>
-            <label><strong>Режим ротации</strong></label><br />
+            <label><strong>Режим ротации (только для режима "По времени")</strong></label><br />
             <select name="abs_mode">
                 <option value="random" <?php selected($mode, 'random'); ?>>Случайно</option>
                 <option value="round" <?php selected($mode, 'round');  ?>>По очереди</option>
@@ -198,7 +212,7 @@ class ABS_Ad_Blocks_Rotator
         <p>
             <label>
                 <input type="checkbox" name="abs_sticky" value="1" <?php checked($sticky, '1'); ?> />
-                Липкость: одному посетителю показывать один и тот же элемент в пределах интервала
+                Липкость (только для режима "По времени"): одному посетителю показывать один и тот же элемент в пределах интервала
             </label>
         </p>
 
@@ -391,10 +405,12 @@ class ABS_Ad_Blocks_Rotator
             $interval = isset($_POST['abs_interval']) ? max(1, (int)$_POST['abs_interval']) : 60;
             $mode = (isset($_POST['abs_mode']) && in_array($_POST['abs_mode'], ['random', 'round'], true)) ? $_POST['abs_mode'] : 'random';
             $sticky = isset($_POST['abs_sticky']) ? '1' : '0';
+            $rotation_type = (isset($_POST['abs_rotation_type']) && in_array($_POST['abs_rotation_type'], ['time', 'page_random'], true)) ? $_POST['abs_rotation_type'] : 'time';
 
             update_post_meta($post_id, self::MG_INTERVAL, (string)$interval);
             update_post_meta($post_id, self::MG_MODE, $mode);
             update_post_meta($post_id, self::MG_STICKY, $sticky);
+            update_post_meta($post_id, self::MG_ROTATION_TYPE, $rotation_type);
         }
 
         // Item save
@@ -478,6 +494,10 @@ class ABS_Ad_Blocks_Rotator
         $mode = get_post_meta($group_id, self::MG_MODE, true) ?: 'random';
         $sticky = get_post_meta($group_id, self::MG_STICKY, true);
         $sticky = ($sticky === '' ? '1' : $sticky);
+        $rotation_type = get_post_meta($group_id, self::MG_ROTATION_TYPE, true);
+        if (!in_array($rotation_type, ['time', 'page_random'], true)) {
+            $rotation_type = 'time';
+        }
 
         $items = get_posts([
             'post_type'   => self::CPT_ITEM,
@@ -493,13 +513,13 @@ class ABS_Ad_Blocks_Rotator
 
         if (!$items) return '';
 
-        $chosen = $this->pick_item($group_id, $items, $interval, $mode, $sticky);
+        $chosen = $this->pick_item($group_id, $items, $interval, $mode, $sticky, $rotation_type);
         if (!$chosen) return '';
 
         $class = $this->sanitize_classes($atts['class']);
         $wrapper_class = 'abs-ad-block' . ($class ? ' ' . $class : '');
 
-        return '<div class="' . esc_attr($wrapper_class) . '" data-abs-group-id="' . (int)$group_id . '" data-abs-interval="' . (int)$interval . '"><div class="abs-ad-inner">' . $this->render_item($chosen) . '</div></div>';
+        return '<div class="' . esc_attr($wrapper_class) . '" data-abs-group-id="' . (int)$group_id . '" data-abs-interval="' . (int)$interval . '" data-abs-rotation-type="' . esc_attr($rotation_type) . '"><div class="abs-ad-inner">' . $this->render_item($chosen) . '</div></div>';
     }
 
     public function ajax_rotate_ad_block()
@@ -515,6 +535,10 @@ class ABS_Ad_Blocks_Rotator
         $mode = get_post_meta($group_id, self::MG_MODE, true) ?: 'random';
         $sticky = get_post_meta($group_id, self::MG_STICKY, true);
         $sticky = ($sticky === '' ? '1' : $sticky);
+        $rotation_type = get_post_meta($group_id, self::MG_ROTATION_TYPE, true);
+        if (!in_array($rotation_type, ['time', 'page_random'], true)) {
+            $rotation_type = 'time';
+        }
 
         $items = get_posts([
             'post_type'   => self::CPT_ITEM,
@@ -532,7 +556,7 @@ class ABS_Ad_Blocks_Rotator
             wp_send_json_error(['message' => 'No items'], 404);
         }
 
-        $chosen = $this->pick_item($group_id, $items, $interval, $mode, $sticky);
+        $chosen = $this->pick_item($group_id, $items, $interval, $mode, $sticky, $rotation_type);
         if (!$chosen) {
             wp_send_json_error(['message' => 'No item selected'], 404);
         }
@@ -542,10 +566,14 @@ class ABS_Ad_Blocks_Rotator
         ]);
     }
 
-    private function pick_item($group_id, $items, $interval, $mode, $sticky)
+    private function pick_item($group_id, $items, $interval, $mode, $sticky, $rotation_type = 'time')
     {
         $count = count($items);
         if ($count === 1) return $items[0];
+
+        if ($rotation_type === 'page_random') {
+            return $items[wp_rand(0, $count - 1)];
+        }
 
         // меняется каждые $interval секунд
         $bucket = (int) floor(time() / $interval);
