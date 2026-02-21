@@ -69,9 +69,42 @@
             $('.abs-rotation-page-random').toggle(!isTime);
         }
 
+        function initDeviceTabs() {
+            $('.abs-device-tabs').each(function () {
+                const $tabs = $(this);
+                const $container = $tabs.closest('.abs-type-image');
+                const $buttons = $tabs.find('.abs-device-tab');
+                const $panels = $container.find('.abs-device-panel');
+
+                function activateTab(tabKey) {
+                    $buttons.each(function () {
+                        const $btn = $(this);
+                        const isActive = String($btn.data('device-tab')) === String(tabKey);
+                        $btn.toggleClass('button-primary', isActive);
+                        $btn.toggleClass('is-active', isActive);
+                    });
+
+                    $panels.each(function () {
+                        const $panel = $(this);
+                        const isActive = String($panel.data('device-panel')) === String(tabKey);
+                        $panel.toggle(isActive);
+                    });
+                }
+
+                $buttons.on('click', function (event) {
+                    event.preventDefault();
+                    activateTab($(this).data('device-tab'));
+                });
+
+                activateTab('general');
+            });
+        }
+
         if ($('#abs_rotation_type').length) {
             $('#abs_rotation_type').on('change', toggleRotationType);
             toggleRotationType();
         }
+
+        initDeviceTabs();
     });
 })(jQuery);

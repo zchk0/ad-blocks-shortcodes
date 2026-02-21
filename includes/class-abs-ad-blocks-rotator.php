@@ -341,61 +341,66 @@ class ABS_Ad_Blocks_Rotator
             </p>
 
             <hr />
-            <p><strong>Условия размеров (CSS)</strong></p>
-            <p>
-                <label>Ширина (width)</label><br />
-                <input type="text" name="abs_img_w" value="<?php echo esc_attr($img_w); ?>" style="width:220px;"
-                    placeholder='например: 100% / 300px / auto' />
-            </p>
-            <p>
-                <label>Высота (height)</label><br />
-                <input type="text" name="abs_img_h" value="<?php echo esc_attr($img_h); ?>" style="width:220px;"
-                    placeholder='например: auto / 250px' />
-            </p>
-            <p>
-                <label>Макс. ширина (max-width)</label><br />
-                <input type="text" name="abs_img_max_w" value="<?php echo esc_attr($img_max_w); ?>" style="width:220px;"
-                    placeholder='например: 100% / 728px' />
-            </p>
-            <p>
-                <label>Макс. высота (max-height)</label><br />
-                <input type="text" name="abs_img_max_h" value="<?php echo esc_attr($img_max_h); ?>" style="width:220px;"
-                    placeholder='например: 250px (можно пусто)' />
-            </p>
-            <p>
-                <label>Вписывание (object-fit)</label><br />
-                <select name="abs_img_fit">
-                    <option value="contain" <?php selected($img_fit, 'contain'); ?>>contain (вписать целиком)</option>
-                    <option value="cover" <?php selected($img_fit, 'cover'); ?>>cover (заполнить, может обрезать)</option>
-                    <option value="fill" <?php selected($img_fit, 'fill'); ?>>fill</option>
-                    <option value="none" <?php selected($img_fit, 'none'); ?>>none</option>
-                    <option value="scale-down" <?php selected($img_fit, 'scale-down'); ?>>scale-down</option>
-                </select>
-            </p>
-            <p>
-                <label>Выравнивание</label><br />
-                <select name="abs_img_align">
-                    <option value="left" <?php selected($img_align, 'left'); ?>>Слева</option>
-                    <option value="center" <?php selected($img_align, 'center'); ?>>По центру</option>
-                    <option value="right" <?php selected($img_align, 'right'); ?>>Справа</option>
-                </select>
-            </p>
-            <p>
-                <label>Скругление (border-radius)</label><br />
-                <input type="text" name="abs_img_radius" value="<?php echo esc_attr($img_rad); ?>" style="width:220px;"
-                    placeholder='например: 0 / 8px / 12px' />
-            </p>
-            <p>
-                <label>Отступы (внутренние, padding)</label><br />
-                <input type="text" name="abs_img_margin" value="<?php echo esc_attr($img_margin); ?>" style="width:260px;"
-                    placeholder='например: 10px / 10px 0 / 10px 12px 8px 12px' />
-            </p>
-            <hr />
-            <p><strong>Профили устройств (3 диапазона)</strong></p>
-            <p style="opacity:.75;">
-                Для каждого диапазона можно отключить показ блока и задать свои параметры картинки.
-                Если поле пустое, используется значение из общих настроек выше.
-            </p>
+            <p><strong>Настройки устройств</strong></p>
+            <div class="abs-device-tabs" style="margin:8px 0 12px 0;">
+                <button type="button" class="button button-primary abs-device-tab is-active" data-device-tab="general">Общий</button>
+                <?php foreach ($this->get_mobile_profile_definitions() as $profile_key => $profile_def) : ?>
+                    <button type="button" class="button abs-device-tab" data-device-tab="<?php echo esc_attr($profile_key); ?>"><?php echo esc_html($profile_def['label']); ?></button>
+                <?php endforeach; ?>
+            </div>
+
+            <div class="abs-device-panel" data-device-panel="general">
+                <p><strong>Условия размеров (CSS)</strong></p>
+                <p>
+                    <label>Ширина (width)</label><br />
+                    <input type="text" name="abs_img_w" value="<?php echo esc_attr($img_w); ?>" style="width:220px;"
+                        placeholder='например: 100% / 300px / auto' />
+                </p>
+                <p>
+                    <label>Высота (height)</label><br />
+                    <input type="text" name="abs_img_h" value="<?php echo esc_attr($img_h); ?>" style="width:220px;"
+                        placeholder='например: auto / 250px' />
+                </p>
+                <p>
+                    <label>Макс. ширина (max-width)</label><br />
+                    <input type="text" name="abs_img_max_w" value="<?php echo esc_attr($img_max_w); ?>" style="width:220px;"
+                        placeholder='например: 100% / 728px' />
+                </p>
+                <p>
+                    <label>Макс. высота (max-height)</label><br />
+                    <input type="text" name="abs_img_max_h" value="<?php echo esc_attr($img_max_h); ?>" style="width:220px;"
+                        placeholder='например: 250px (можно пусто)' />
+                </p>
+                <p>
+                    <label>Вписывание (object-fit)</label><br />
+                    <select name="abs_img_fit">
+                        <option value="contain" <?php selected($img_fit, 'contain'); ?>>contain (вписать целиком)</option>
+                        <option value="cover" <?php selected($img_fit, 'cover'); ?>>cover (заполнить, может обрезать)</option>
+                        <option value="fill" <?php selected($img_fit, 'fill'); ?>>fill</option>
+                        <option value="none" <?php selected($img_fit, 'none'); ?>>none</option>
+                        <option value="scale-down" <?php selected($img_fit, 'scale-down'); ?>>scale-down</option>
+                    </select>
+                </p>
+                <p>
+                    <label>Выравнивание</label><br />
+                    <select name="abs_img_align">
+                        <option value="left" <?php selected($img_align, 'left'); ?>>Слева</option>
+                        <option value="center" <?php selected($img_align, 'center'); ?>>По центру</option>
+                        <option value="right" <?php selected($img_align, 'right'); ?>>Справа</option>
+                    </select>
+                </p>
+                <p>
+                    <label>Скругление (border-radius)</label><br />
+                    <input type="text" name="abs_img_radius" value="<?php echo esc_attr($img_rad); ?>" style="width:220px;"
+                        placeholder='например: 0 / 8px / 12px' />
+                </p>
+                <p>
+                    <label>Отступы (внутренние, padding)</label><br />
+                    <input type="text" name="abs_img_margin" value="<?php echo esc_attr($img_margin); ?>" style="width:260px;"
+                        placeholder='например: 10px / 10px 0 / 10px 12px 8px 12px' />
+                </p>
+            </div>
+
             <?php foreach ($this->get_mobile_profile_definitions() as $profile_key => $profile_def) : ?>
                 <?php
                 $profile = isset($mobile_profiles[$profile_key]) && is_array($mobile_profiles[$profile_key]) ? $mobile_profiles[$profile_key] : [];
@@ -409,11 +414,12 @@ class ABS_Ad_Blocks_Rotator
                 $profile_radius = isset($profile['radius']) ? $profile['radius'] : '';
                 $profile_padding = isset($profile['padding']) ? $profile['padding'] : '';
                 ?>
-                <div style="margin:12px 0; padding:10px 12px; border:1px solid #ddd; border-radius:6px;">
+                <div class="abs-device-panel" data-device-panel="<?php echo esc_attr($profile_key); ?>" style="display:none; border:1px solid #ddd; border-radius:6px; padding:10px 12px;">
                     <p style="margin:0 0 8px 0;">
                         <strong><?php echo esc_html($profile_def['label']); ?></strong>
                         <span style="opacity:.75;">(<?php echo esc_html($profile_def['range']); ?>)</span>
                     </p>
+                    <p style="opacity:.75;">Если поле пустое, используется значение из вкладки "Общий".</p>
                     <p>
                         <label>
                             <input type="checkbox" name="abs_mobile[<?php echo esc_attr($profile_key); ?>][enabled]" value="1" <?php checked($profile_enabled, '1'); ?> />
