@@ -40,22 +40,64 @@
 }
 
 .abs-country-remove {
+    position: relative;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 18px;
-    height: 18px;
+    width: 20px;
+    height: 20px;
     margin: 0;
+    padding: 0;
+    border: 1px solid #d0d3d8;
     border-radius: 999px;
-    color: #646970;
-    text-decoration: none;
+    background: #fff;
+    color: transparent;
+    font-size: 0;
     line-height: 1;
+    cursor: pointer;
+    text-decoration: none;
+    box-shadow: none;
+    transition: border-color 0.16s ease, background-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.abs-country-remove::before,
+.abs-country-remove::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 9px;
+    height: 1.6px;
+    border-radius: 2px;
+    background: #6c7781;
+    transform-origin: center;
+}
+
+.abs-country-remove::before {
+    transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.abs-country-remove::after {
+    transform: translate(-50%, -50%) rotate(-45deg);
 }
 
 .abs-country-remove:hover,
 .abs-country-remove:focus {
-    color: #b32d2e;
-    background: #fbeaea;
+    border-color: #e26a6a;
+    background: #fff1f1;
+    box-shadow: 0 0 0 1px #e26a6a;
+    outline: none;
+}
+
+.abs-country-remove:hover::before,
+.abs-country-remove:hover::after,
+.abs-country-remove:focus::before,
+.abs-country-remove:focus::after {
+    background: #b32d2e;
+}
+
+.abs-country-remove:active {
+    background: #ffe2e2;
     box-shadow: none;
 }
 

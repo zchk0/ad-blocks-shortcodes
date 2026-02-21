@@ -140,7 +140,7 @@
 
                 $tag.append($('<button/>', {
                     'type': 'button',
-                    'class': 'button-link-delete abs-country-remove',
+                    'class': 'abs-country-remove',
                     'aria-label': 'Удалить код'
                 }).html('&times;'));
 

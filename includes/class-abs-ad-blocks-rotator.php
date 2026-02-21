@@ -313,7 +313,7 @@ class ABS_Ad_Blocks_Rotator
                     <?php foreach ($country_codes as $code) : ?>
                         <span class="abs-country-tag" data-code="<?php echo esc_attr($code); ?>">
                             <span class="abs-country-tag-code"><?php echo esc_html($code); ?></span>
-                            <button type="button" class="button-link-delete abs-country-remove" aria-label="Удалить код">&times;</button>
+                            <button type="button" class="abs-country-remove" aria-label="Удалить код">&times;</button>
                             <input type="hidden" name="abs_item_country_codes[]" value="<?php echo esc_attr($code); ?>" />
                         </span>
                     <?php endforeach; ?>
