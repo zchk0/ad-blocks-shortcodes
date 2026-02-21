@@ -103,6 +103,7 @@
         function initCountryCodesInput() {
             const $list = $('#abs_country_codes_list');
             const $input = $('#abs_item_country_code_input');
+            const $wrap = $('#abs_country_input_wrap');
 
             if (!$list.length || !$input.length) {
                 return;
@@ -127,31 +128,37 @@
                 return found;
             }
 
-            function addCode(code) {
-                if (!code || hasCode(code)) {
-                    return;
-                }
-
+            function buildTag(code) {
                 const $tag = $('<span/>', {
                     'class': 'abs-country-tag',
-                    'data-code': code,
-                    'style': 'display:inline-flex; align-items:center; gap:6px; background:#f0f0f1; border:1px solid #dcdcde; border-radius:4px; padding:2px 8px;'
+                    'data-code': code
                 });
 
-                $tag.append($('<strong/>').text(code));
+                $tag.append($('<span/>', {
+                    'class': 'abs-country-tag-code'
+                }).text(code));
+
                 $tag.append($('<button/>', {
                     'type': 'button',
                     'class': 'button-link-delete abs-country-remove',
-                    'aria-label': 'Удалить код',
-                    'style': 'line-height:1;'
+                    'aria-label': 'Удалить код'
                 }).html('&times;'));
+
                 $tag.append($('<input/>', {
                     'type': 'hidden',
                     'name': 'abs_item_country_codes[]',
                     'value': code
                 }));
 
-                $list.append($tag);
+                return $tag;
+            }
+
+            function addCode(code) {
+                if (!code || hasCode(code)) {
+                    return;
+                }
+
+                $input.before(buildTag(code));
             }
 
             function addCodesFromInput() {
@@ -168,10 +175,25 @@
                 if (event.key === 'Enter') {
                     event.preventDefault();
                     addCodesFromInput();
+                    return;
+                }
+
+                if (event.key === 'Backspace' && !$input.val().trim()) {
+                    const $lastTag = $list.find('.abs-country-tag').last();
+                    if ($lastTag.length) {
+                        event.preventDefault();
+                        $lastTag.remove();
+                    }
                 }
             });
 
             $input.on('blur', addCodesFromInput);
+
+            $wrap.on('click', function (event) {
+                if (!$(event.target).closest('.abs-country-remove').length) {
+                    $input.trigger('focus');
+                }
+            });
 
             $list.on('click', '.abs-country-remove', function (event) {
                 event.preventDefault();

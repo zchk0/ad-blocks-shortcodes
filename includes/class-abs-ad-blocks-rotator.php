@@ -109,6 +109,13 @@ class ABS_Ad_Blocks_Rotator
         }
 
         if (in_array($screen->post_type, [self::CPT_ITEM, self::CPT_GROUP], true)) {
+            wp_enqueue_style(
+                'abs-ad-rotator-admin',
+                plugin_dir_url(ABS_AD_BLOCKS_SHORTCODES_FILE) . 'assets/css/abs-admin.css',
+                [],
+                ABS_AD_BLOCKS_SHORTCODES_VERSION
+            );
+
             wp_enqueue_script(
                 'abs-ad-rotator-admin',
                 plugin_dir_url(ABS_AD_BLOCKS_SHORTCODES_FILE) . 'assets/js/abs-admin.js',
@@ -301,17 +308,19 @@ class ABS_Ad_Blocks_Rotator
 
         <div>
             <label><strong>Коды стран показа (ISO 3166-1 alpha-2)</strong></label><br />
-            <div id="abs_country_codes_list" style="display:flex; flex-wrap:wrap; gap:6px; margin:8px 0;">
-                <?php foreach ($country_codes as $code) : ?>
-                    <span class="abs-country-tag" data-code="<?php echo esc_attr($code); ?>" style="display:inline-flex; align-items:center; gap:6px; background:#f0f0f1; border:1px solid #dcdcde; border-radius:4px; padding:2px 8px;">
-                        <strong><?php echo esc_html($code); ?></strong>
-                        <button type="button" class="button-link-delete abs-country-remove" aria-label="Удалить код" style="line-height:1;">&times;</button>
-                        <input type="hidden" name="abs_item_country_codes[]" value="<?php echo esc_attr($code); ?>" />
-                    </span>
-                <?php endforeach; ?>
+            <div id="abs_country_input_wrap" class="abs-country-input-wrap">
+                <div id="abs_country_codes_list" class="abs-country-codes-list">
+                    <?php foreach ($country_codes as $code) : ?>
+                        <span class="abs-country-tag" data-code="<?php echo esc_attr($code); ?>">
+                            <span class="abs-country-tag-code"><?php echo esc_html($code); ?></span>
+                            <button type="button" class="button-link-delete abs-country-remove" aria-label="Удалить код">&times;</button>
+                            <input type="hidden" name="abs_item_country_codes[]" value="<?php echo esc_attr($code); ?>" />
+                        </span>
+                    <?php endforeach; ?>
+                    <input type="text" id="abs_item_country_code_input" class="abs-country-code-input" placeholder="Например: RU" />
+                </div>
             </div>
-            <input type="text" id="abs_item_country_code_input" placeholder="Например: RU" style="width:220px; text-transform:uppercase;" />
-            <span style="opacity:.75;">введи код и нажми Enter</span>
+            <span class="abs-country-help">введи код страны и нажми Enter</span>
         </div>
         <p style="opacity:.75;">
             Если коды стран не указаны, реклама показывается для всех стран.
