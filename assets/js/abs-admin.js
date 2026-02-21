@@ -100,11 +100,91 @@
             });
         }
 
+        function initCountryCodesInput() {
+            const $list = $('#abs_country_codes_list');
+            const $input = $('#abs_item_country_code_input');
+
+            if (!$list.length || !$input.length) {
+                return;
+            }
+
+            function extractCodes(rawValue) {
+                return String(rawValue || '')
+                    .toUpperCase()
+                    .split(/[^A-Z]+/)
+                    .filter(function (code) {
+                        return /^[A-Z]{2}$/.test(code);
+                    });
+            }
+
+            function hasCode(code) {
+                let found = false;
+                $list.find('.abs-country-tag').each(function () {
+                    if (String($(this).data('code')) === code) {
+                        found = true;
+                    }
+                });
+                return found;
+            }
+
+            function addCode(code) {
+                if (!code || hasCode(code)) {
+                    return;
+                }
+
+                const $tag = $('<span/>', {
+                    'class': 'abs-country-tag',
+                    'data-code': code,
+                    'style': 'display:inline-flex; align-items:center; gap:6px; background:#f0f0f1; border:1px solid #dcdcde; border-radius:4px; padding:2px 8px;'
+                });
+
+                $tag.append($('<strong/>').text(code));
+                $tag.append($('<button/>', {
+                    'type': 'button',
+                    'class': 'button-link-delete abs-country-remove',
+                    'aria-label': 'Удалить код',
+                    'style': 'line-height:1;'
+                }).html('&times;'));
+                $tag.append($('<input/>', {
+                    'type': 'hidden',
+                    'name': 'abs_item_country_codes[]',
+                    'value': code
+                }));
+
+                $list.append($tag);
+            }
+
+            function addCodesFromInput() {
+                const codes = extractCodes($input.val());
+                if (!codes.length) {
+                    return;
+                }
+
+                codes.forEach(addCode);
+                $input.val('');
+            }
+
+            $input.on('keydown', function (event) {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    addCodesFromInput();
+                }
+            });
+
+            $input.on('blur', addCodesFromInput);
+
+            $list.on('click', '.abs-country-remove', function (event) {
+                event.preventDefault();
+                $(this).closest('.abs-country-tag').remove();
+            });
+        }
+
         if ($('#abs_rotation_type').length) {
             $('#abs_rotation_type').on('change', toggleRotationType);
             toggleRotationType();
         }
 
         initDeviceTabs();
+        initCountryCodesInput();
     });
 })(jQuery);

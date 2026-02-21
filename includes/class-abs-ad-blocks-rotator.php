@@ -18,6 +18,7 @@ class ABS_Ad_Blocks_Rotator
     const MI_GROUP_ID = '_abs_group_id';
     const MI_ACTIVE   = '_abs_active';     // 1|0
     const MI_RENDER_MOBILE = '_abs_render_mobile'; // 1|0
+    const MI_COUNTRY_CODES = '_abs_country_codes'; // array like ['RU','US']
     const MI_TYPE     = '_abs_type';       // code|image
     const MI_CODE     = '_abs_code';
     const MI_IMAGE_ID = '_abs_image_id';
@@ -244,6 +245,7 @@ class ABS_Ad_Blocks_Rotator
         $active   = ($active === '' ? '1' : $active);
         $render_mobile = get_post_meta($post->ID, self::MI_RENDER_MOBILE, true);
         $render_mobile = ($render_mobile === '' ? '1' : $render_mobile);
+        $country_codes = $this->sanitize_country_codes(get_post_meta($post->ID, self::MI_COUNTRY_CODES, true));
 
         $type     = get_post_meta($post->ID, self::MI_TYPE, true);
         if (!$type) $type = 'code';
@@ -295,6 +297,28 @@ class ABS_Ad_Blocks_Rotator
                 <input type="checkbox" name="abs_item_render_mobile" value="1" <?php checked($render_mobile, '1'); ?> />
                 Рендерить блок на мобильных устройствах
             </label>
+        </p>
+
+        <div>
+            <label><strong>Коды стран показа (ISO 3166-1 alpha-2)</strong></label><br />
+            <div id="abs_country_codes_list" style="display:flex; flex-wrap:wrap; gap:6px; margin:8px 0;">
+                <?php foreach ($country_codes as $code) : ?>
+                    <span class="abs-country-tag" data-code="<?php echo esc_attr($code); ?>" style="display:inline-flex; align-items:center; gap:6px; background:#f0f0f1; border:1px solid #dcdcde; border-radius:4px; padding:2px 8px;">
+                        <strong><?php echo esc_html($code); ?></strong>
+                        <button type="button" class="button-link-delete abs-country-remove" aria-label="Удалить код" style="line-height:1;">&times;</button>
+                        <input type="hidden" name="abs_item_country_codes[]" value="<?php echo esc_attr($code); ?>" />
+                    </span>
+                <?php endforeach; ?>
+            </div>
+            <input type="text" id="abs_item_country_code_input" placeholder="Например: RU" style="width:220px; text-transform:uppercase;" />
+            <span style="opacity:.75;">введи код и нажми Enter</span>
+        </div>
+        <p style="opacity:.75;">
+            Если коды стран не указаны, реклама показывается для всех стран.
+        </p>
+        <p class="notice inline" style="padding:8px 10px; margin:8px 0;">
+            Страна берется из <code>$_SERVER['GEOIP_COUNTRY_CODE']</code>. Обычно это отдается nginx в заголовок на основе <code>GeoLite2-Country.mmdb</code>.
+            Для работы фильтра настройте это на своем сервере.
         </p>
 
         <p>
@@ -521,6 +545,9 @@ class ABS_Ad_Blocks_Rotator
             update_post_meta($post_id, self::MI_ACTIVE, $active);
             $render_mobile = isset($_POST['abs_item_render_mobile']) ? '1' : '0';
             update_post_meta($post_id, self::MI_RENDER_MOBILE, $render_mobile);
+            $country_codes_input = isset($_POST['abs_item_country_codes']) ? wp_unslash($_POST['abs_item_country_codes']) : [];
+            $country_codes = $this->sanitize_country_codes($country_codes_input);
+            update_post_meta($post_id, self::MI_COUNTRY_CODES, $country_codes);
 
             $group_id = isset($_POST['abs_item_group_id']) ? (int)$_POST['abs_item_group_id'] : 0;
             update_post_meta($post_id, self::MI_GROUP_ID, (string)$group_id);
@@ -624,6 +651,7 @@ class ABS_Ad_Blocks_Rotator
             'order'   => 'ASC',
         ]);
 
+        $items = $this->filter_items_by_country($items);
         if (!$items) return '';
 
         $chosen = $this->pick_item($group_id, $items, $interval, $mode, $sticky, $rotation_type);
@@ -675,6 +703,7 @@ class ABS_Ad_Blocks_Rotator
             'order'   => 'ASC',
         ]);
 
+        $items = $this->filter_items_by_country($items);
         if (!$items) {
             wp_send_json_error(['message' => 'No items'], 404);
         }
@@ -856,6 +885,61 @@ class ABS_Ad_Blocks_Rotator
         }
 
         return implode(' ', $clean);
+    }
+
+    private function sanitize_country_codes($value)
+    {
+        if (is_string($value)) {
+            $value = preg_split('/[\s,;]+/', $value);
+        }
+
+        if (!is_array($value)) {
+            return [];
+        }
+
+        $codes = [];
+        foreach ($value as $code) {
+            $code = strtoupper(trim((string)$code));
+            if (preg_match('/^[A-Z]{2}$/', $code)) {
+                $codes[] = $code;
+            }
+        }
+
+        return array_values(array_unique($codes));
+    }
+
+    private function get_request_country_code()
+    {
+        if (!isset($_SERVER['GEOIP_COUNTRY_CODE'])) {
+            return '';
+        }
+
+        $code = strtoupper(trim((string)wp_unslash($_SERVER['GEOIP_COUNTRY_CODE'])));
+        return preg_match('/^[A-Z]{2}$/', $code) ? $code : '';
+    }
+
+    private function filter_items_by_country($items)
+    {
+        if (!is_array($items) || !$items) {
+            return [];
+        }
+
+        $request_country = $this->get_request_country_code();
+        $filtered = [];
+
+        foreach ($items as $item) {
+            $allowed_codes = $this->sanitize_country_codes(get_post_meta($item->ID, self::MI_COUNTRY_CODES, true));
+            if (!$allowed_codes) {
+                $filtered[] = $item;
+                continue;
+            }
+
+            if ($request_country !== '' && in_array($request_country, $allowed_codes, true)) {
+                $filtered[] = $item;
+            }
+        }
+
+        return $filtered;
     }
 
     private function get_mobile_profile_definitions()
