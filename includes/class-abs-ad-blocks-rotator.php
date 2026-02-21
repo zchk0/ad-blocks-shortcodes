@@ -32,6 +32,7 @@ class ABS_Ad_Blocks_Rotator
     const MI_IMG_ALIGN    = '_abs_img_align';   // left|center|right
     const MI_IMG_RADIUS   = '_abs_img_radius';  // e.g. "0" or "8px" or "12px"
     const MI_IMG_MARGIN   = '_abs_img_margin';  // e.g. "10px" or "10px 0 20px"
+    const MI_MOBILE_PROFILES = '_abs_mobile_profiles'; // array of mobile profile settings
 
     public function __construct()
     {
@@ -260,6 +261,7 @@ class ABS_Ad_Blocks_Rotator
         $img_align = get_post_meta($post->ID, self::MI_IMG_ALIGN, true);
         $img_rad   = get_post_meta($post->ID, self::MI_IMG_RADIUS, true);
         $img_margin = get_post_meta($post->ID, self::MI_IMG_MARGIN, true);
+        $mobile_profiles = $this->sanitize_mobile_profiles(get_post_meta($post->ID, self::MI_MOBILE_PROFILES, true), '1');
 
         if ($img_w === '')     $img_w = '100%';
         if ($img_h === '')     $img_h = 'auto';
@@ -388,6 +390,82 @@ class ABS_Ad_Blocks_Rotator
                 <input type="text" name="abs_img_margin" value="<?php echo esc_attr($img_margin); ?>" style="width:260px;"
                     placeholder='например: 10px / 10px 0 / 10px 12px 8px 12px' />
             </p>
+            <hr />
+            <p><strong>Профили устройств (3 диапазона)</strong></p>
+            <p style="opacity:.75;">
+                Для каждого диапазона можно отключить показ блока и задать свои параметры картинки.
+                Если поле пустое, используется значение из общих настроек выше.
+            </p>
+            <?php foreach ($this->get_mobile_profile_definitions() as $profile_key => $profile_def) : ?>
+                <?php
+                $profile = isset($mobile_profiles[$profile_key]) && is_array($mobile_profiles[$profile_key]) ? $mobile_profiles[$profile_key] : [];
+                $profile_enabled = isset($profile['enabled']) ? (string)$profile['enabled'] : '1';
+                $profile_w = isset($profile['w']) ? $profile['w'] : '';
+                $profile_h = isset($profile['h']) ? $profile['h'] : '';
+                $profile_max_w = isset($profile['max_w']) ? $profile['max_w'] : '';
+                $profile_max_h = isset($profile['max_h']) ? $profile['max_h'] : '';
+                $profile_fit = isset($profile['fit']) ? $profile['fit'] : '';
+                $profile_align = isset($profile['align']) ? $profile['align'] : '';
+                $profile_radius = isset($profile['radius']) ? $profile['radius'] : '';
+                $profile_padding = isset($profile['padding']) ? $profile['padding'] : '';
+                ?>
+                <div style="margin:12px 0; padding:10px 12px; border:1px solid #ddd; border-radius:6px;">
+                    <p style="margin:0 0 8px 0;">
+                        <strong><?php echo esc_html($profile_def['label']); ?></strong>
+                        <span style="opacity:.75;">(<?php echo esc_html($profile_def['range']); ?>)</span>
+                    </p>
+                    <p>
+                        <label>
+                            <input type="checkbox" name="abs_mobile[<?php echo esc_attr($profile_key); ?>][enabled]" value="1" <?php checked($profile_enabled, '1'); ?> />
+                            Показывать блок в этом диапазоне
+                        </label>
+                    </p>
+                    <p>
+                        <label>Ширина (width)</label><br />
+                        <input type="text" name="abs_mobile[<?php echo esc_attr($profile_key); ?>][w]" value="<?php echo esc_attr($profile_w); ?>" style="width:220px;" placeholder="общее значение" />
+                    </p>
+                    <p>
+                        <label>Высота (height)</label><br />
+                        <input type="text" name="abs_mobile[<?php echo esc_attr($profile_key); ?>][h]" value="<?php echo esc_attr($profile_h); ?>" style="width:220px;" placeholder="общее значение" />
+                    </p>
+                    <p>
+                        <label>Макс. ширина (max-width)</label><br />
+                        <input type="text" name="abs_mobile[<?php echo esc_attr($profile_key); ?>][max_w]" value="<?php echo esc_attr($profile_max_w); ?>" style="width:220px;" placeholder="общее значение" />
+                    </p>
+                    <p>
+                        <label>Макс. высота (max-height)</label><br />
+                        <input type="text" name="abs_mobile[<?php echo esc_attr($profile_key); ?>][max_h]" value="<?php echo esc_attr($profile_max_h); ?>" style="width:220px;" placeholder="общее значение" />
+                    </p>
+                    <p>
+                        <label>Вписывание (object-fit)</label><br />
+                        <select name="abs_mobile[<?php echo esc_attr($profile_key); ?>][fit]">
+                            <option value="" <?php selected($profile_fit, ''); ?>>Общее значение</option>
+                            <option value="contain" <?php selected($profile_fit, 'contain'); ?>>contain</option>
+                            <option value="cover" <?php selected($profile_fit, 'cover'); ?>>cover</option>
+                            <option value="fill" <?php selected($profile_fit, 'fill'); ?>>fill</option>
+                            <option value="none" <?php selected($profile_fit, 'none'); ?>>none</option>
+                            <option value="scale-down" <?php selected($profile_fit, 'scale-down'); ?>>scale-down</option>
+                        </select>
+                    </p>
+                    <p>
+                        <label>Выравнивание</label><br />
+                        <select name="abs_mobile[<?php echo esc_attr($profile_key); ?>][align]">
+                            <option value="" <?php selected($profile_align, ''); ?>>Общее значение</option>
+                            <option value="left" <?php selected($profile_align, 'left'); ?>>Слева</option>
+                            <option value="center" <?php selected($profile_align, 'center'); ?>>По центру</option>
+                            <option value="right" <?php selected($profile_align, 'right'); ?>>Справа</option>
+                        </select>
+                    </p>
+                    <p>
+                        <label>Скругление (border-radius)</label><br />
+                        <input type="text" name="abs_mobile[<?php echo esc_attr($profile_key); ?>][radius]" value="<?php echo esc_attr($profile_radius); ?>" style="width:220px;" placeholder="общее значение" />
+                    </p>
+                    <p>
+                        <label>Внутренние отступы (padding)</label><br />
+                        <input type="text" name="abs_mobile[<?php echo esc_attr($profile_key); ?>][padding]" value="<?php echo esc_attr($profile_padding); ?>" style="width:220px;" placeholder="общее значение" />
+                    </p>
+                </div>
+            <?php endforeach; ?>
             <p style="opacity:.75;">
                 Значения — как в CSS: <code>100%</code>, <code>300px</code>, <code>auto</code>.
             </p>
@@ -460,6 +538,8 @@ class ABS_Ad_Blocks_Rotator
 
             $img_radius = isset($_POST['abs_img_radius']) ? $this->sanitize_css_size($_POST['abs_img_radius'], '0') : '0';
             $img_margin = isset($_POST['abs_img_margin']) ? $this->sanitize_css_box_size($_POST['abs_img_margin'], '') : '';
+            $mobile_profiles_input = isset($_POST['abs_mobile']) ? wp_unslash($_POST['abs_mobile']) : [];
+            $mobile_profiles = $this->sanitize_mobile_profiles($mobile_profiles_input, '0');
 
             update_post_meta($post_id, self::MI_IMG_W, $img_w);
             update_post_meta($post_id, self::MI_IMG_H, $img_h);
@@ -469,6 +549,7 @@ class ABS_Ad_Blocks_Rotator
             update_post_meta($post_id, self::MI_IMG_ALIGN, $img_align);
             update_post_meta($post_id, self::MI_IMG_RADIUS, $img_radius);
             update_post_meta($post_id, self::MI_IMG_MARGIN, $img_margin);
+            update_post_meta($post_id, self::MI_MOBILE_PROFILES, $mobile_profiles);
         }
     }
 
@@ -634,6 +715,7 @@ class ABS_Ad_Blocks_Rotator
             $align = get_post_meta($post->ID, self::MI_IMG_ALIGN, true) ?: 'center';
             $rad   = get_post_meta($post->ID, self::MI_IMG_RADIUS, true) ?: '0';
             $margin = get_post_meta($post->ID, self::MI_IMG_MARGIN, true);
+            $mobile_profiles = $this->sanitize_mobile_profiles(get_post_meta($post->ID, self::MI_MOBILE_PROFILES, true), '1');
 
             // sanitize again on output (на случай кривых данных в базе)
             $w     = $this->sanitize_css_size($w, '100%');
@@ -642,6 +724,10 @@ class ABS_Ad_Blocks_Rotator
             $max_h = $this->sanitize_css_size($max_h, '');
             $rad   = $this->sanitize_css_size($rad, '0');
             $margin = $this->sanitize_css_box_size($margin, '');
+            $mobile_profiles_json = wp_json_encode($mobile_profiles);
+            if (!is_string($mobile_profiles_json)) {
+                $mobile_profiles_json = '{}';
+            }
 
             $fit_allowed = ['contain', 'cover', 'fill', 'none', 'scale-down'];
             if (!in_array($fit, $fit_allowed, true)) $fit = 'contain';
@@ -669,7 +755,7 @@ class ABS_Ad_Blocks_Rotator
 
             $wrap_style = 'text-align:' . $align . ';';
             if ($margin !== '') $wrap_style .= 'padding:' . $margin . ';';
-            $inner = '<div class="abs-ad-img-wrap" style="' . esc_attr($wrap_style) . '">' . $img_html . '</div>';
+            $inner = '<div class="abs-ad-img-wrap" data-abs-mobile-profiles="' . esc_attr($mobile_profiles_json) . '" style="' . esc_attr($wrap_style) . '">' . $img_html . '</div>';
 
             if (empty($link)) return $inner;
 
@@ -732,6 +818,61 @@ class ABS_Ad_Blocks_Rotator
         }
 
         return implode(' ', $clean);
+    }
+
+    private function get_mobile_profile_definitions()
+    {
+        return [
+            'phone'    => ['label' => 'Телефон', 'range' => '0-767px'],
+            'tablet'   => ['label' => 'Планшет', 'range' => '768-1024px'],
+            'computer' => ['label' => 'Компьютер', 'range' => '1025px+'],
+        ];
+    }
+
+    private function sanitize_mobile_profiles($value, $default_enabled = '1')
+    {
+        $profiles = is_array($value) ? $value : [];
+        $legacy_key_map = [
+            'phone'    => 's',
+            'tablet'   => 'm',
+            'computer' => 'l',
+        ];
+
+        $fit_allowed = ['contain', 'cover', 'fill', 'none', 'scale-down'];
+        $align_allowed = ['left', 'center', 'right'];
+        $default_enabled = ($default_enabled === '0') ? '0' : '1';
+
+        $result = [];
+        foreach (array_keys($this->get_mobile_profile_definitions()) as $profile_key) {
+            $profile = (isset($profiles[$profile_key]) && is_array($profiles[$profile_key])) ? $profiles[$profile_key] : [];
+
+            if (!$profile && isset($legacy_key_map[$profile_key])) {
+                $legacy_key = $legacy_key_map[$profile_key];
+                if (isset($profiles[$legacy_key]) && is_array($profiles[$legacy_key])) {
+                    $profile = $profiles[$legacy_key];
+                }
+            }
+
+            if (array_key_exists('enabled', $profile)) {
+                $enabled = ((string)$profile['enabled'] === '1') ? '1' : '0';
+            } else {
+                $enabled = $default_enabled;
+            }
+
+            $result[$profile_key] = [
+                'enabled' => $enabled,
+                'w'       => isset($profile['w']) ? $this->sanitize_css_size($profile['w'], '') : '',
+                'h'       => isset($profile['h']) ? $this->sanitize_css_size($profile['h'], '') : '',
+                'max_w'   => isset($profile['max_w']) ? $this->sanitize_css_size($profile['max_w'], '') : '',
+                'max_h'   => isset($profile['max_h']) ? $this->sanitize_css_size($profile['max_h'], '') : '',
+                'fit'     => (isset($profile['fit']) && in_array($profile['fit'], $fit_allowed, true)) ? $profile['fit'] : '',
+                'align'   => (isset($profile['align']) && in_array($profile['align'], $align_allowed, true)) ? $profile['align'] : '',
+                'radius'  => isset($profile['radius']) ? $this->sanitize_css_size($profile['radius'], '') : '',
+                'padding' => isset($profile['padding']) ? $this->sanitize_css_box_size($profile['padding'], '') : '',
+            ];
+        }
+
+        return $result;
     }
 
     private function sanitize_classes($classes)
