@@ -148,6 +148,14 @@
                         }
 
                         $block.find('.abs-ad-inner').html(response.data.html);
+                        if (response.data.item_id !== undefined) {
+                            const itemId = parseInt(response.data.item_id, 10) || 0;
+                            if (itemId) {
+                                $block.attr('data-abs-item-id', itemId);
+                            } else {
+                                $block.removeAttr('data-abs-item-id');
+                            }
+                        }
                         applyMobileProfiles($block);
                     })
                     .always(function () {

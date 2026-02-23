@@ -669,7 +669,9 @@ class ABS_Ad_Blocks_Rotator
         $class = $this->sanitize_classes($atts['class']);
         $wrapper_class = 'abs-ad-block' . ($class ? ' ' . $class : '');
 
-        return '<div class="' . esc_attr($wrapper_class) . '" data-abs-group-id="' . (int)$group_id . '" data-abs-interval="' . (int)$interval . '" data-abs-rotation-type="' . esc_attr($rotation_type) . '"><div class="abs-ad-inner">' . $this->render_item($chosen) . '</div></div>';
+        $item_id = (int) $chosen->ID;
+
+        return '<div class="' . esc_attr($wrapper_class) . '" data-abs-group-id="' . (int)$group_id . '" data-abs-item-id="' . $item_id . '" data-abs-interval="' . (int)$interval . '" data-abs-rotation-type="' . esc_attr($rotation_type) . '"><div class="abs-ad-inner">' . $this->render_item($chosen) . '</div></div>';
     }
 
     public function ajax_rotate_ad_block()
@@ -724,6 +726,7 @@ class ABS_Ad_Blocks_Rotator
 
         wp_send_json_success([
             'html' => $this->render_item($chosen),
+            'item_id' => (int) $chosen->ID,
         ]);
     }
 
