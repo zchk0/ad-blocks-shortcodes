@@ -24,6 +24,8 @@ class ABS_Ad_Blocks_Rotator
     const MI_IMAGE_ID = '_abs_image_id';
     const MI_LINK_URL = '_abs_link_url';
     const MI_ALT      = '_abs_alt';
+    const MI_CLICK_COUNT = '_abs_click_count';
+    const MI_LAST_CLICK_TS = '_abs_last_click_ts';
 
     // Image size metas (CSS-like)
     const MI_IMG_W        = '_abs_img_w';       // e.g. "100%" or "300px" or "auto"
@@ -49,6 +51,13 @@ class ABS_Ad_Blocks_Rotator
         add_shortcode('ad_block', [$this, 'shortcode_ad_block']);
         add_action('wp_ajax_abs_ad_block_rotate', [$this, 'ajax_rotate_ad_block']);
         add_action('wp_ajax_nopriv_abs_ad_block_rotate', [$this, 'ajax_rotate_ad_block']);
+        add_action('wp_ajax_abs_track_ad_click', [$this, 'ajax_track_ad_click']);
+        add_action('wp_ajax_nopriv_abs_track_ad_click', [$this, 'ajax_track_ad_click']);
+        add_action('admin_post_abs_ad_click', [$this, 'handle_tracked_click']);
+        add_action('admin_post_nopriv_abs_ad_click', [$this, 'handle_tracked_click']);
+
+        add_filter('manage_edit-' . self::CPT_ITEM . '_columns', [$this, 'filter_item_columns']);
+        add_action('manage_' . self::CPT_ITEM . '_posts_custom_column', [$this, 'render_item_column'], 10, 2);
 
         // Чтобы шорткоды работали в виджетах/тексте (по желанию)
         add_filter('widget_text', 'do_shortcode');
@@ -261,6 +270,9 @@ class ABS_Ad_Blocks_Rotator
         $image_id = (int) get_post_meta($post->ID, self::MI_IMAGE_ID, true);
         $link     = get_post_meta($post->ID, self::MI_LINK_URL, true);
         $alt      = get_post_meta($post->ID, self::MI_ALT, true);
+        $click_count = $this->get_item_click_count($post->ID);
+        $last_click_ts = (int) get_post_meta($post->ID, self::MI_LAST_CLICK_TS, true);
+        $last_click_label = $last_click_ts > 0 ? wp_date(get_option('date_format') . ' ' . get_option('time_format'), $last_click_ts) : '—';
 
         $group_id = (int) get_post_meta($post->ID, self::MI_GROUP_ID, true);
 
@@ -519,6 +531,16 @@ class ABS_Ad_Blocks_Rotator
                 Значения — как в CSS: <code>100%</code>, <code>300px</code>, <code>auto</code>.
             </p>
         </div>
+
+        <p class="notice inline" style="padding:8px 10px; margin:8px 0;">
+            <strong>Клики:</strong> <?php echo esc_html((string) $click_count); ?><br />
+            <strong>Последний клик:</strong> <?php echo esc_html($last_click_label); ?>
+        </p>
+        <p style="opacity:.75;">
+            Для типа «Картинка + ссылка» переходы считаются через внутренний redirect плагина.
+            Для типа «Код (HTML/JS)» считаются клики только по обычным ссылкам внутри HTML.
+            Клики внутри iframe и сторонних рекламных скриптов не отслеживаются.
+        </p>
 <?php
     }
 
@@ -730,6 +752,66 @@ class ABS_Ad_Blocks_Rotator
         ]);
     }
 
+    public function ajax_track_ad_click()
+    {
+        $item_id = isset($_POST['item_id']) ? absint(wp_unslash($_POST['item_id'])) : 0;
+        if (!$this->is_trackable_item($item_id)) {
+            wp_send_json_error(['message' => 'Invalid item id'], 400);
+        }
+
+        $this->increment_click_count($item_id);
+
+        wp_send_json_success([
+            'item_id' => $item_id,
+            'click_count' => $this->get_item_click_count($item_id),
+        ]);
+    }
+
+    public function handle_tracked_click()
+    {
+        $item_id = isset($_GET['item_id']) ? absint(wp_unslash($_GET['item_id'])) : 0;
+        if (!$this->is_trackable_item($item_id)) {
+            $this->redirect_after_click(home_url('/'));
+        }
+
+        $target_url = get_post_meta($item_id, self::MI_LINK_URL, true);
+        $target_url = is_string($target_url) ? esc_url_raw($target_url) : '';
+        if ($target_url === '') {
+            $this->redirect_after_click(home_url('/'));
+        }
+
+        $this->increment_click_count($item_id);
+        $this->redirect_after_click($target_url);
+    }
+
+    public function filter_item_columns($columns)
+    {
+        $result = [];
+
+        foreach ($columns as $key => $label) {
+            $result[$key] = $label;
+
+            if ($key === 'title') {
+                $result['abs_clicks'] = 'Клики';
+            }
+        }
+
+        if (!isset($result['abs_clicks'])) {
+            $result['abs_clicks'] = 'Клики';
+        }
+
+        return $result;
+    }
+
+    public function render_item_column($column, $post_id)
+    {
+        if ($column !== 'abs_clicks') {
+            return;
+        }
+
+        echo esc_html((string) $this->get_item_click_count($post_id));
+    }
+
     private function pick_item($group_id, $items, $interval, $mode, $sticky, $rotation_type = 'time')
     {
         $count = count($items);
@@ -838,7 +920,8 @@ class ABS_Ad_Blocks_Rotator
 
             if (empty($link)) return $inner;
 
-            return '<a href="' . esc_url($link) . '" rel="nofollow sponsored" target="_blank">' . $inner . '</a>';
+            $tracked_link = $this->get_tracked_click_url($post->ID);
+            return '<a href="' . esc_url($tracked_link) . '" rel="nofollow sponsored noopener" target="_blank" data-abs-click-mode="redirect" data-abs-item-id="' . (int) $post->ID . '">' . $inner . '</a>';
         }
 
         // code: выводим как есть (реклама часто требует script)
@@ -1020,5 +1103,53 @@ class ABS_Ad_Blocks_Rotator
             if ($c !== '') $clean[] = $c;
         }
         return implode(' ', array_unique($clean));
+    }
+
+    private function is_trackable_item($item_id)
+    {
+        $item_id = absint($item_id);
+        if ($item_id <= 0) {
+            return false;
+        }
+
+        $post = get_post($item_id);
+        if (!$post || $post->post_type !== self::CPT_ITEM || $post->post_status !== 'publish') {
+            return false;
+        }
+
+        return true;
+    }
+
+    private function increment_click_count($item_id)
+    {
+        $count = $this->get_item_click_count($item_id) + 1;
+        update_post_meta($item_id, self::MI_CLICK_COUNT, (string) $count);
+        update_post_meta($item_id, self::MI_LAST_CLICK_TS, (string) current_time('timestamp'));
+    }
+
+    private function get_item_click_count($item_id)
+    {
+        $count = (int) get_post_meta($item_id, self::MI_CLICK_COUNT, true);
+        return max(0, $count);
+    }
+
+    private function get_tracked_click_url($item_id)
+    {
+        return add_query_arg([
+            'action' => 'abs_ad_click',
+            'item_id' => (int) $item_id,
+        ], admin_url('admin-post.php'));
+    }
+
+    private function redirect_after_click($url)
+    {
+        $url = is_string($url) ? esc_url_raw($url) : '';
+        if ($url === '') {
+            $url = home_url('/');
+        }
+
+        nocache_headers();
+        wp_redirect($url, 302, 'ALStrive Ad Blocks Shortcodes');
+        exit;
     }
 }

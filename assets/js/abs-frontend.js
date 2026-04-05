@@ -94,6 +94,33 @@
         });
     }
 
+    function trackAdClick(config, itemId) {
+        itemId = parseInt(itemId, 10) || 0;
+        if (!itemId || !config.ajaxUrl) {
+            return;
+        }
+
+        if (window.navigator && typeof window.navigator.sendBeacon === 'function' && typeof window.FormData === 'function') {
+            const beaconData = new window.FormData();
+            beaconData.append('action', 'abs_track_ad_click');
+            beaconData.append('item_id', String(itemId));
+
+            if (window.navigator.sendBeacon(config.ajaxUrl, beaconData)) {
+                return;
+            }
+        }
+
+        $.ajax({
+            url: config.ajaxUrl,
+            type: 'POST',
+            dataType: 'json',
+            data: {
+                action: 'abs_track_ad_click',
+                item_id: itemId
+            }
+        });
+    }
+
     $(function () {
         const config = window.absAdRotatorFrontend || {};
 
@@ -108,6 +135,23 @@
             resizeTimer = window.setTimeout(function () {
                 applyMobileProfiles($(document));
             }, 140);
+        });
+
+        $(document).on('click', '.abs-ad-block a', function () {
+            const $link = $(this);
+
+            if (String($link.attr('data-abs-click-mode') || '') === 'redirect') {
+                return;
+            }
+
+            const $block = $link.closest('.abs-ad-block[data-abs-item-id]');
+            const itemId = parseInt($block.attr('data-abs-item-id'), 10) || parseInt($link.attr('data-abs-item-id'), 10) || 0;
+
+            if (!itemId) {
+                return;
+            }
+
+            trackAdClick(config, itemId);
         });
 
         if (!config.ajaxUrl) {
