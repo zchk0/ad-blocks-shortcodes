@@ -1,6 +1,37 @@
 (function ($) {
     "use strict";
 
+    function getProfileEnabledValue(profile) {
+        if (!profile) {
+            return '0';
+        }
+
+        if (typeof profile === 'object') {
+            return String(profile.enabled || '0') === '1' ? '1' : '0';
+        }
+
+        return String(profile) === '1' ? '1' : '0';
+    }
+
+    function syncBlockDeviceVisibility($block, profiles) {
+        if (!$block.length) {
+            return;
+        }
+
+        if (!profiles || typeof profiles !== 'object') {
+            $block.removeAttr('data-abs-device-visibility');
+            $block.removeAttr('data-abs-visible-phone');
+            $block.removeAttr('data-abs-visible-tablet');
+            $block.removeAttr('data-abs-visible-computer');
+            return;
+        }
+
+        $block.attr('data-abs-device-visibility', '1');
+        $block.attr('data-abs-visible-phone', getProfileEnabledValue(profiles.phone));
+        $block.attr('data-abs-visible-tablet', getProfileEnabledValue(profiles.tablet));
+        $block.attr('data-abs-visible-computer', getProfileEnabledValue(profiles.computer));
+    }
+
     function getDeviceProfileKey(viewportWidth) {
         if (viewportWidth <= 767) {
             return 'phone';
@@ -21,6 +52,7 @@
             const $wrap = $(this);
             const $img = $wrap.find('img').first();
             const $block = $wrap.closest('.abs-ad-block');
+            const blockElement = $block.get(0);
             const rawProfiles = $wrap.attr('data-abs-mobile-profiles');
 
             if (!$img.length || !rawProfiles) {
@@ -42,9 +74,16 @@
                 $img.data('absBaseStyle', $img.attr('style') || '');
             }
 
+            if ($block.data('absBaseDisplay') === undefined) {
+                $block.data('absBaseDisplay', blockElement && blockElement.style && typeof blockElement.style.display === 'string' ? blockElement.style.display : '');
+            }
+
             $wrap.attr('style', String($wrap.data('absBaseStyle') || ''));
             $img.attr('style', String($img.data('absBaseStyle') || ''));
-            $block.show();
+            if (blockElement && blockElement.style) {
+                blockElement.style.display = String($block.data('absBaseDisplay') || '');
+            }
+            syncBlockDeviceVisibility($block, profiles);
 
             if (!profiles || typeof profiles !== 'object') {
                 return;
@@ -56,7 +95,6 @@
             }
 
             if (String(profile.enabled || '0') !== '1') {
-                $block.hide();
                 return;
             }
 
@@ -200,6 +238,7 @@
                                 $block.removeAttr('data-abs-item-id');
                             }
                         }
+                        syncBlockDeviceVisibility($block, response.data.device_visibility);
                         applyMobileProfiles($block);
                     })
                     .always(function () {

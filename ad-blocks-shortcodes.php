@@ -2,7 +2,7 @@
 /**
  * Plugin Name: ALStrive: Рекламные шорткоды
  * Description: Рекламные группы с ротацией. Элементы: код или картинка+ссылка. Вывод через шорткод.
- * Version: 1.0.1
+ * Version: 1.0.2
  * Author: alstrive.ru
  */
 
@@ -11,7 +11,7 @@ if (!defined('ABSPATH')) {
 }
 
 if (!defined('ABS_AD_BLOCKS_SHORTCODES_VERSION')) {
-    define('ABS_AD_BLOCKS_SHORTCODES_VERSION', '1.0.1');
+    define('ABS_AD_BLOCKS_SHORTCODES_VERSION', '1.0.2');
 }
 
 if (!defined('ABS_AD_BLOCKS_SHORTCODES_FILE')) {

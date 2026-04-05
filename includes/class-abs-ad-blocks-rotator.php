@@ -690,10 +690,11 @@ class ABS_Ad_Blocks_Rotator
 
         $class = $this->sanitize_classes($atts['class']);
         $wrapper_class = 'abs-ad-block' . ($class ? ' ' . $class : '');
+        $device_visibility_attrs = $this->get_item_device_visibility_attributes($chosen);
 
         $item_id = (int) $chosen->ID;
 
-        return '<div class="' . esc_attr($wrapper_class) . '" data-abs-group-id="' . (int)$group_id . '" data-abs-item-id="' . $item_id . '" data-abs-interval="' . (int)$interval . '" data-abs-rotation-type="' . esc_attr($rotation_type) . '"><div class="abs-ad-inner">' . $this->render_item($chosen) . '</div></div>';
+        return '<div class="' . esc_attr($wrapper_class) . '" data-abs-group-id="' . (int)$group_id . '" data-abs-item-id="' . $item_id . '" data-abs-interval="' . (int)$interval . '" data-abs-rotation-type="' . esc_attr($rotation_type) . '"' . $device_visibility_attrs . '><div class="abs-ad-inner">' . $this->render_item($chosen) . '</div></div>';
     }
 
     public function ajax_rotate_ad_block()
@@ -749,6 +750,7 @@ class ABS_Ad_Blocks_Rotator
         wp_send_json_success([
             'html' => $this->render_item($chosen),
             'item_id' => (int) $chosen->ID,
+            'device_visibility' => $this->get_item_device_visibility($chosen),
         ]);
     }
 
@@ -1090,6 +1092,39 @@ class ABS_Ad_Blocks_Rotator
         }
 
         return $result;
+    }
+
+    private function get_item_device_visibility($post)
+    {
+        if (!$post || empty($post->ID)) {
+            return [];
+        }
+
+        $type = get_post_meta($post->ID, self::MI_TYPE, true) ?: 'code';
+        if ($type !== 'image') {
+            return [];
+        }
+
+        $mobile_profiles = $this->sanitize_mobile_profiles(get_post_meta($post->ID, self::MI_MOBILE_PROFILES, true), '1');
+
+        return [
+            'phone' => (isset($mobile_profiles['phone']['enabled']) && $mobile_profiles['phone']['enabled'] === '1') ? '1' : '0',
+            'tablet' => (isset($mobile_profiles['tablet']['enabled']) && $mobile_profiles['tablet']['enabled'] === '1') ? '1' : '0',
+            'computer' => (isset($mobile_profiles['computer']['enabled']) && $mobile_profiles['computer']['enabled'] === '1') ? '1' : '0',
+        ];
+    }
+
+    private function get_item_device_visibility_attributes($post)
+    {
+        $visibility = $this->get_item_device_visibility($post);
+        if (!$visibility) {
+            return '';
+        }
+
+        return ' data-abs-device-visibility="1"'
+            . ' data-abs-visible-phone="' . esc_attr($visibility['phone']) . '"'
+            . ' data-abs-visible-tablet="' . esc_attr($visibility['tablet']) . '"'
+            . ' data-abs-visible-computer="' . esc_attr($visibility['computer']) . '"';
     }
 
     private function sanitize_classes($classes)

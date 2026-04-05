@@ -22,3 +22,25 @@
 .abs-ad-block a {
     display: block;
 }
+
+.abs-ad-block[data-abs-device-visibility="1"] {
+    display: none;
+}
+
+@media (max-width: 767px) {
+    .abs-ad-block[data-abs-device-visibility="1"][data-abs-visible-phone="1"] {
+        display: block;
+    }
+}
+
+@media (min-width: 768px) and (max-width: 1024px) {
+    .abs-ad-block[data-abs-device-visibility="1"][data-abs-visible-tablet="1"] {
+        display: block;
+    }
+}
+
+@media (min-width: 1025px) {
+    .abs-ad-block[data-abs-device-visibility="1"][data-abs-visible-computer="1"] {
+        display: block;
+    }
+}
