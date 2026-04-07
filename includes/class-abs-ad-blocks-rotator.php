@@ -55,9 +55,12 @@ class ABS_Ad_Blocks_Rotator
         add_action('wp_ajax_nopriv_abs_track_ad_click', [$this, 'ajax_track_ad_click']);
         add_action('admin_post_abs_ad_click', [$this, 'handle_tracked_click']);
         add_action('admin_post_nopriv_abs_ad_click', [$this, 'handle_tracked_click']);
+        add_action('admin_action_abs_clone_ad_item', [$this, 'handle_clone_item']);
 
         add_filter('manage_edit-' . self::CPT_ITEM . '_columns', [$this, 'filter_item_columns']);
         add_action('manage_' . self::CPT_ITEM . '_posts_custom_column', [$this, 'render_item_column'], 10, 2);
+        add_filter('post_row_actions', [$this, 'add_item_clone_row_action'], 10, 2);
+        add_action('admin_notices', [$this, 'render_clone_admin_notice']);
 
         // Чтобы шорткоды работали в виджетах/тексте (по желанию)
         add_filter('widget_text', 'do_shortcode');
@@ -814,6 +817,91 @@ class ABS_Ad_Blocks_Rotator
         echo esc_html((string) $this->get_item_click_count($post_id));
     }
 
+    public function add_item_clone_row_action($actions, $post)
+    {
+        if (!$post instanceof WP_Post || $post->post_type !== self::CPT_ITEM || $post->post_status === 'trash') {
+            return $actions;
+        }
+
+        if (!current_user_can('edit_post', $post->ID)) {
+            return $actions;
+        }
+
+        $actions['abs_clone_item'] = '<a href="' . esc_url($this->get_clone_item_url($post->ID)) . '">Клонировать</a>';
+
+        return $actions;
+    }
+
+    public function handle_clone_item()
+    {
+        $post_id = isset($_GET['post']) ? absint(wp_unslash($_GET['post'])) : 0;
+        if ($post_id <= 0) {
+            wp_die('Не найден рекламный материал для клонирования.');
+        }
+
+        check_admin_referer('abs_clone_ad_item_' . $post_id);
+
+        if (!current_user_can('edit_post', $post_id)) {
+            wp_die('Недостаточно прав для клонирования рекламного материала.');
+        }
+
+        $post = get_post($post_id);
+        if (!$post || $post->post_type !== self::CPT_ITEM) {
+            wp_die('Исходный рекламный материал не найден.');
+        }
+
+        $new_post_id = wp_insert_post([
+            'post_type'      => self::CPT_ITEM,
+            'post_status'    => 'draft',
+            'post_title'     => $this->build_cloned_item_title($post->post_title),
+            'post_content'   => $post->post_content,
+            'post_excerpt'   => $post->post_excerpt,
+            'post_author'    => get_current_user_id(),
+            'menu_order'     => (int) $post->menu_order,
+            'comment_status' => $post->comment_status,
+            'ping_status'    => $post->ping_status,
+        ], true);
+
+        if (is_wp_error($new_post_id)) {
+            wp_die(esc_html($new_post_id->get_error_message()));
+        }
+
+        $this->clone_post_meta($post_id, $new_post_id);
+
+        $redirect_url = add_query_arg([
+            'post' => (int) $new_post_id,
+            'action' => 'edit',
+            'abs_cloned' => '1',
+            'abs_source_post' => (int) $post_id,
+        ], admin_url('post.php'));
+
+        wp_safe_redirect($redirect_url);
+        exit;
+    }
+
+    public function render_clone_admin_notice()
+    {
+        if (!is_admin()) {
+            return;
+        }
+
+        $screen = function_exists('get_current_screen') ? get_current_screen() : null;
+        if (!$screen || $screen->post_type !== self::CPT_ITEM) {
+            return;
+        }
+
+        $is_cloned = isset($_GET['abs_cloned']) && wp_unslash($_GET['abs_cloned']) === '1';
+        $post_id = isset($_GET['post']) ? absint(wp_unslash($_GET['post'])) : 0;
+        if (!$is_cloned || $post_id <= 0 || !current_user_can('edit_post', $post_id)) {
+            return;
+        }
+        ?>
+        <div class="notice notice-success is-dismissible">
+            <p>Копия рекламного материала создана как черновик. Проверьте заголовок и настройки перед публикацией.</p>
+        </div>
+        <?php
+    }
+
     private function pick_item($group_id, $items, $interval, $mode, $sticky, $rotation_type = 'time')
     {
         $count = count($items);
@@ -935,6 +1023,62 @@ class ABS_Ad_Blocks_Rotator
     /* ---------------------------
      * Helpers
      * --------------------------- */
+
+    private function get_clone_item_url($post_id)
+    {
+        return wp_nonce_url(
+            add_query_arg([
+                'action' => 'abs_clone_ad_item',
+                'post' => (int) $post_id,
+            ], admin_url('admin.php')),
+            'abs_clone_ad_item_' . (int) $post_id
+        );
+    }
+
+    private function build_cloned_item_title($title)
+    {
+        $title = is_string($title) ? trim($title) : '';
+        if ($title === '') {
+            return 'Копия рекламного материала';
+        }
+
+        return sprintf('%s (копия)', $title);
+    }
+
+    private function clone_post_meta($source_post_id, $target_post_id)
+    {
+        $meta = get_post_meta($source_post_id);
+        if (!is_array($meta) || !$meta) {
+            return;
+        }
+
+        foreach ($meta as $meta_key => $values) {
+            if (in_array($meta_key, $this->get_clone_excluded_meta_keys(), true)) {
+                continue;
+            }
+
+            if (!is_array($values)) {
+                $values = [$values];
+            }
+
+            foreach ($values as $value) {
+                add_post_meta($target_post_id, $meta_key, maybe_unserialize($value));
+            }
+        }
+
+        update_post_meta($target_post_id, self::MI_CLICK_COUNT, '0');
+        delete_post_meta($target_post_id, self::MI_LAST_CLICK_TS);
+    }
+
+    private function get_clone_excluded_meta_keys()
+    {
+        return [
+            self::MI_CLICK_COUNT,
+            self::MI_LAST_CLICK_TS,
+            '_edit_lock',
+            '_edit_last',
+        ];
+    }
 
     // Очень консервативная чистка CSS-значений размеров:
     // допускаем: auto | 0 | число + (px|%|em|rem|vh|vw) | calc(...)
