@@ -277,7 +277,7 @@ class ABS_Ad_Blocks_Rotator
         $last_click_ts = (int) get_post_meta($post->ID, self::MI_LAST_CLICK_TS, true);
         $last_click_label = $last_click_ts > 0 ? wp_date(get_option('date_format') . ' ' . get_option('time_format'), $last_click_ts) : '—';
 
-        $group_id = (int) get_post_meta($post->ID, self::MI_GROUP_ID, true);
+        $group_ids = $this->get_item_group_ids($post->ID);
 
         // Image sizing settings
         $img_w     = get_post_meta($post->ID, self::MI_IMG_W, true);
@@ -346,15 +346,16 @@ class ABS_Ad_Blocks_Rotator
         </p>
 
         <p>
-            <label><strong>Группа</strong></label><br />
-            <select name="abs_item_group_id" required>
-                <option value="">— выбери группу —</option>
+            <label><strong>Группы</strong></label><br />
+            <select name="abs_item_group_ids[]" multiple size="<?php echo esc_attr((string) min(max(count($groups), 4), 10)); ?>" style="min-width:320px;">
                 <?php foreach ($groups as $g) : ?>
-                    <option value="<?php echo (int)$g->ID; ?>" <?php selected($group_id, (int)$g->ID); ?>>
+                    <option value="<?php echo (int)$g->ID; ?>" <?php selected(in_array((int) $g->ID, $group_ids, true)); ?>>
                         <?php echo esc_html($g->post_title); ?> (ID: <?php echo (int)$g->ID; ?>)
                     </option>
                 <?php endforeach; ?>
             </select>
+            <br />
+            <span style="opacity:.75;">Можно выбрать несколько групп. Для выбора нескольких значений удерживайте Ctrl или Cmd.</span>
         </p>
 
         <hr />
@@ -583,8 +584,18 @@ class ABS_Ad_Blocks_Rotator
             $country_codes = $this->sanitize_country_codes($country_codes_input);
             update_post_meta($post_id, self::MI_COUNTRY_CODES, $country_codes);
 
-            $group_id = isset($_POST['abs_item_group_id']) ? (int)$_POST['abs_item_group_id'] : 0;
-            update_post_meta($post_id, self::MI_GROUP_ID, (string)$group_id);
+            $group_ids_input = [];
+            if (isset($_POST['abs_item_group_ids'])) {
+                $group_ids_input = wp_unslash($_POST['abs_item_group_ids']);
+            } elseif (isset($_POST['abs_item_group_id'])) {
+                $group_ids_input = [wp_unslash($_POST['abs_item_group_id'])];
+            }
+
+            $group_ids = $this->sanitize_group_ids($group_ids_input);
+            delete_post_meta($post_id, self::MI_GROUP_ID);
+            foreach ($group_ids as $group_id) {
+                add_post_meta($post_id, self::MI_GROUP_ID, (string) $group_id);
+            }
 
             $type = (isset($_POST['abs_item_type']) && in_array($_POST['abs_item_type'], ['code', 'image'], true)) ? $_POST['abs_item_type'] : 'code';
             update_post_meta($post_id, self::MI_TYPE, $type);
@@ -663,27 +674,7 @@ class ABS_Ad_Blocks_Rotator
             $rotation_type = 'time';
         }
 
-        $meta_query = [
-            ['key' => self::MI_GROUP_ID, 'value' => (string)$group_id, 'compare' => '='],
-            ['key' => self::MI_ACTIVE,   'value' => '1',              'compare' => '='],
-        ];
-
-        if (wp_is_mobile()) {
-            $meta_query[] = [
-                'relation' => 'OR',
-                ['key' => self::MI_RENDER_MOBILE, 'compare' => 'NOT EXISTS'],
-                ['key' => self::MI_RENDER_MOBILE, 'value' => '1', 'compare' => '='],
-            ];
-        }
-
-        $items = get_posts([
-            'post_type'   => self::CPT_ITEM,
-            'post_status' => 'publish',
-            'numberposts' => 200,
-            'meta_query'  => $meta_query,
-            'orderby' => 'ID',
-            'order'   => 'ASC',
-        ]);
+        $items = $this->get_group_items($group_id);
 
         $items = $this->filter_items_by_country($items);
         if (!$items) return '';
@@ -718,27 +709,7 @@ class ABS_Ad_Blocks_Rotator
             $rotation_type = 'time';
         }
 
-        $meta_query = [
-            ['key' => self::MI_GROUP_ID, 'value' => (string)$group_id, 'compare' => '='],
-            ['key' => self::MI_ACTIVE,   'value' => '1',              'compare' => '='],
-        ];
-
-        if (wp_is_mobile()) {
-            $meta_query[] = [
-                'relation' => 'OR',
-                ['key' => self::MI_RENDER_MOBILE, 'compare' => 'NOT EXISTS'],
-                ['key' => self::MI_RENDER_MOBILE, 'value' => '1', 'compare' => '='],
-            ];
-        }
-
-        $items = get_posts([
-            'post_type'   => self::CPT_ITEM,
-            'post_status' => 'publish',
-            'numberposts' => 200,
-            'meta_query'  => $meta_query,
-            'orderby' => 'ID',
-            'order'   => 'ASC',
-        ]);
+        $items = $this->get_group_items($group_id);
 
         $items = $this->filter_items_by_country($items);
         if (!$items) {
@@ -1023,6 +994,68 @@ class ABS_Ad_Blocks_Rotator
     /* ---------------------------
      * Helpers
      * --------------------------- */
+
+    private function get_item_group_ids($post_id)
+    {
+        return $this->sanitize_group_ids(get_post_meta($post_id, self::MI_GROUP_ID, false));
+    }
+
+    private function sanitize_group_ids($value)
+    {
+        if (!is_array($value)) {
+            $value = [$value];
+        }
+
+        $group_ids = [];
+        foreach ($value as $group_value) {
+            if (is_array($group_value)) {
+                foreach ($group_value as $nested_value) {
+                    $group_id = absint($nested_value);
+                    if ($group_id > 0) {
+                        $group_ids[] = $group_id;
+                    }
+                }
+                continue;
+            }
+
+            $group_id = absint($group_value);
+            if ($group_id > 0) {
+                $group_ids[] = $group_id;
+            }
+        }
+
+        return array_values(array_unique($group_ids));
+    }
+
+    private function get_group_items($group_id)
+    {
+        $group_id = absint($group_id);
+        if ($group_id <= 0) {
+            return [];
+        }
+
+        $meta_query = [
+            ['key' => self::MI_GROUP_ID, 'value' => (string) $group_id, 'compare' => '='],
+            ['key' => self::MI_ACTIVE, 'value' => '1', 'compare' => '='],
+        ];
+
+        if (wp_is_mobile()) {
+            $meta_query[] = [
+                'relation' => 'OR',
+                ['key' => self::MI_RENDER_MOBILE, 'compare' => 'NOT EXISTS'],
+                ['key' => self::MI_RENDER_MOBILE, 'value' => '1', 'compare' => '='],
+            ];
+        }
+
+        return get_posts([
+            'post_type' => self::CPT_ITEM,
+            'post_status' => 'publish',
+            'numberposts' => 200,
+            'meta_query' => $meta_query,
+            'orderby' => 'ID',
+            'order' => 'ASC',
+        ]);
+    }
 
     private function get_clone_item_url($post_id)
     {
